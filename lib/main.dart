@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
             builder: (context) => const ChatListScreen(),
           );
         } else if (settings.name == '/chat_detail') {
-          final conversationId = settings.arguments as String;
+          final conversationId = settings.arguments as String?;
           return MaterialPageRoute(
             builder: (context) => ChatDetailScreen(
               conversationId: conversationId,

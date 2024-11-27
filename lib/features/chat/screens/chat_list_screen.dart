@@ -75,47 +75,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  Future<String?> _showNewChatDialog(BuildContext context) async {
-    final TextEditingController controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('开始新对话'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: '请输入您想问的问题',
-            ),
-            autofocus: true,
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final message = controller.text.trim();
-                if (message.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('请输入问题内容')),
-                  );
-                  return;
-                }
-                Navigator.of(context).pop(message);
-              },
-              child: const Text('发送'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,30 +83,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          try {
-            final message = await _showNewChatDialog(context);
-            if (message == null || message.isEmpty) return;
-            
-            _chatService.resetConversation();
-            final response = await _chatService.sendMessage(message);
-            
-            if (response.conversationId != null && mounted) {
-              Navigator.pushNamed(
-                context,
-                '/chat_detail',
-                arguments: response.conversationId,
-              ).then((_) => _loadConversations());
-            }
-          } catch (e) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('创建新会话失败: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/chat_detail',
+          ).then((_) => _loadConversations());
         },
         child: const Icon(Icons.add),
       ),

@@ -434,7 +434,9 @@ class ChatService {
     }
   }
 
-  Future<void> deleteConversation(String conversationId) async {
+  Future<void> deleteConversation(String? conversationId) async {
+    if (conversationId == null) return;
+    
     final response = await _client.delete(
       Uri.parse(ApiConfig.baseUrl + '/conversations/$conversationId'),
       headers: {
@@ -451,7 +453,9 @@ class ChatService {
     }
   }
 
-  Future<void> renameConversation(String conversationId, String name) async {
+  Future<void> renameConversation(String? conversationId, String name) async {
+    if (conversationId == null) return;
+    
     final response = await _client.post(
       Uri.parse(ApiConfig.baseUrl + '/conversations/$conversationId/name'),
       headers: {
@@ -475,7 +479,7 @@ class ChatService {
     _currentConversationId = null;
   }
 
-  void setConversationId(String id) {
+  void setConversationId(String? id) {
     _currentConversationId = id;
   }
 }

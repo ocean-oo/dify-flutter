@@ -4,12 +4,9 @@ import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
 
 class ChatDetailScreen extends StatefulWidget {
-  final String conversationId;
+  final String? conversationId;
   
-  const ChatDetailScreen({
-    Key? key,
-    required this.conversationId,
-  }) : super(key: key);
+  const ChatDetailScreen({Key? key, this.conversationId}) : super(key: key);
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -20,13 +17,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
-  String _conversationTitle = '加载中...';
+  String _conversationTitle = '新对话';
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadConversation();
+    _chatService.setConversationId(widget.conversationId);
+    if (widget.conversationId != null) {
+      _loadConversation();
+      _loadMessages();
+    }
   }
 
   Future<void> _loadConversation() async {
@@ -39,7 +40,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
 
     try {
-      _chatService.setConversationId(widget.conversationId);
       // 获取会话列表来获取当前会话的标题
       final conversations = await _chatService.getConversations();
       final currentConversation = conversations.firstWhere(
@@ -50,8 +50,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         _conversationTitle = currentConversation.name ?? '新对话';
       });
-      
-      await _loadHistoryMessages();
     } catch (e) {
       print('加载会话出错: $e');
       setState(() {
@@ -64,7 +62,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  Future<void> _loadHistoryMessages() async {
+  Future<void> _loadMessages() async {
     print('=== 开始加载历史消息 ===');
     print('当前会话ID: ${_chatService.currentConversationId}');
     
@@ -120,6 +118,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (text.trim().isEmpty) return;
 
     setState(() {
+      _isLoading = true;
       _messages.add(
         ChatMessage(
           content: text,
@@ -131,30 +130,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _scrollToBottom();
 
     try {
-      ChatMessage? streamingMessage;
+      final response = await _chatService.sendMessage(text);
       
-      await for (final response in _chatService.sendMessageStream(text)) {
-        setState(() {
-          // 如果是新的流式消息，添加到消息列表
-          if (streamingMessage == null) {
-            streamingMessage = response;
-            _messages.add(streamingMessage!);
-          } else {
-            // 更新现有的流式消息
-            final index = _messages.indexOf(streamingMessage!);
-            streamingMessage = response;
-            _messages[index] = streamingMessage!;
-          }
-        });
-        _scrollToBottom();
+      if (widget.conversationId == null && response.conversationId != null) {
+        // 如果是新会话，更新路由参数
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/chat_detail',
+            arguments: response.conversationId,
+          );
+        }
+      }
+
+      if (mounted) {
+        await _loadMessages();
+        if (widget.conversationId != null) {
+          await _loadConversation();
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sending message: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('发送消息失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
