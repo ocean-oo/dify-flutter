@@ -1,8 +1,8 @@
 # Dify Chat App
 
-Try to make all codes write by AI.
+A lot of web chat apps, but less native chat apps.
 
-Use dify as backend. flutter is frontend.
+Try to write one with flutter and dify, use ai as much as possible.
 
 ## Getting Started
 
