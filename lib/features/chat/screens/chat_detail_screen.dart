@@ -5,8 +5,22 @@ import '../widgets/message_bubble.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String? conversationId;
-  
-  const ChatDetailScreen({Key? key, this.conversationId}) : super(key: key);
+  final String? title;
+
+  const ChatDetailScreen({
+    Key? key,
+    this.conversationId,
+    this.title,
+  }) : super(key: key);
+
+  static Route<bool> route({Map<String, dynamic>? arguments}) {
+    return MaterialPageRoute<bool>(
+      builder: (context) => ChatDetailScreen(
+        conversationId: arguments?['id'] as String?,
+        title: arguments?['title'] as String?,
+      ),
+    );
+  }
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -17,15 +31,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
-  String _conversationTitle = '新对话';
+  late String _conversationTitle;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _chatService.setConversationId(widget.conversationId);
+    _conversationTitle = widget.title ?? 'New Conversation';
     if (widget.conversationId != null) {
-      _loadConversation();
       _loadMessages();
     }
   }
@@ -33,43 +47,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _loadConversation() async {
     print('=== 开始加载会话 ===');
     print('会话ID: ${widget.conversationId}');
-    
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
-
-    try {
-      // 获取会话列表来获取当前会话的标题
-      final conversations = await _chatService.getConversations();
-      final currentConversation = conversations.firstWhere(
-        (conv) => conv.id == widget.conversationId,
-        orElse: () => throw Exception('找不到当前会话'),
-      );
-      
-      setState(() {
-        _conversationTitle = currentConversation.name ?? '新对话';
-      });
-    } catch (e) {
-      print('加载会话出错: $e');
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _loadMessages() async {
     print('=== 开始加载历史消息 ===');
     print('当前会话ID: ${_chatService.currentConversationId}');
-    
-    if (_chatService.currentConversationId == null) {
-      print('没有会话ID，跳过加载历史消息');
-      return;
-    }
 
     setState(() {
       _isLoading = true;
@@ -77,18 +64,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
 
     try {
-      print('正在获取历史消息...');
-      final messages = await _chatService.getMessageHistory(_chatService.currentConversationId!);
+      final messages = await _chatService
+          .getMessageHistory(_chatService.currentConversationId!);
       print('获取到 ${messages.length} 条历史消息');
-      
-      setState(() {
-        _messages.clear();
-        _messages.addAll(messages);
-      });
-      
+
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          _messages.addAll(messages);
+        });
+      }
+
       print('历史消息加载完成');
-      
-      // 使用 WidgetsBinding 确保在下一帧渲染完成后滚动
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
@@ -117,6 +105,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
 
+    print('=== 发送新消息 ===');
+    print('消息内容: $text');
+
     setState(() {
       _isLoading = true;
       _messages.add(
@@ -131,25 +122,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     try {
       final response = await _chatService.sendMessage(text);
-      
+
       if (widget.conversationId == null && response.conversationId != null) {
-        // 如果是新会话，更新路由参数
+        print('新会话创建，ID: ${response.conversationId}');
+        final name = await _chatService.renameConversation(
+          response.conversationId,
+          '',
+          autoGenerate: true,
+        );
+        print('获取到的名称: $name');
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/chat_detail',
-            arguments: response.conversationId,
-          );
+          setState(() {
+            _conversationTitle = name;
+          });
         }
       }
 
       if (mounted) {
         await _loadMessages();
-        if (widget.conversationId != null) {
-          await _loadConversation();
-        }
       }
     } catch (e) {
+      print('发送消息失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -165,15 +158,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         });
       }
     }
-  }
-
-  void _resetConversation() {
-    setState(() {
-      _messages.clear();
-      _chatService.resetConversation();
-    });
-    // 重置后重新加载会话列表
-    _loadConversation();
   }
 
   @override
@@ -218,8 +202,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       body: Column(
         children: [
           Expanded(child: _buildMessageList()),
-          if (_isLoading)
-            const LinearProgressIndicator(),
+          if (_isLoading) const LinearProgressIndicator(),
           ChatInput(
             onSend: _handleSubmitted,
             enabled: !_isLoading,
@@ -290,9 +273,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               onPressed: () async {
                 final newName = controller.text.trim();
                 if (newName.isEmpty) return;
-                
+
                 try {
-                  await _chatService.renameConversation(widget.conversationId, newName);
+                  await _chatService.renameConversation(
+                      widget.conversationId, newName);
                   setState(() {
                     _conversationTitle = newName;
                   });
@@ -344,7 +328,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       try {
         await _chatService.deleteConversation(widget.conversationId);
         if (!mounted) return;
-        Navigator.pop(context); // 返回聊天列表
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('会话已删除')),
         );

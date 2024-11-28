@@ -1,3 +1,4 @@
+import 'package:chat_app/features/chat/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_list_item.dart';
 import '../../../core/services/chat_service.dart';
@@ -52,24 +53,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    print('当前时间: $now');
-    print('会话时间: $timestamp');
-    print('时间差: $difference');
 
     if (difference.inMinutes < 1) {
       return '刚刚';
     } else if (difference.inHours < 1) {
       final minutes = difference.inMinutes;
-      print('分钟差: $minutes');
-      return '${minutes}分钟前';
+      return '$minutes分钟前';
     } else if (difference.inDays < 1) {
       final hours = difference.inHours;
-      print('小时差: $hours');
-      return '${hours}小时前';
+      return '$hours小时前';
     } else if (difference.inDays < 30) {
       final days = difference.inDays;
-      print('天数差: $days');
-      return '${days}天前';
+      return '$days天前';
     } else {
       return '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}';
     }
@@ -134,20 +129,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
               itemBuilder: (context, index) {
                 final conversation = _conversations[index];
                 print('渲染会话: ${conversation.id}');
-                print('会话创建时间: ${conversation.createdAt}');
-                print('会话更新时间: ${conversation.updatedAt}');
                 final formattedTime = _formatTimestamp(conversation.updatedAt);
-                print('格式化后时间: $formattedTime');
                 return ChatListItem(
-                  title: conversation.name ?? '新对话',
+                  title: conversation.name,
                   lastMessage: '点击继续对话',
                   timestamp: formattedTime,
                   onTap: () {
-                    Navigator.pushNamed(
+                    Navigator.push(
                       context,
-                      '/chat_detail',
-                      arguments: conversation.id,
-                    ).then((_) => _loadConversations());
+                      ChatDetailScreen.route(
+                        arguments: {
+                          'id': conversation.id,
+                          'title': conversation.name,
+                        },
+                      ),
+                    );
                   },
                 );
               },

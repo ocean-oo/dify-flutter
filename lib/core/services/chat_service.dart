@@ -63,7 +63,7 @@ class ChatService {
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
     print('=== 开始获取历史消息 ===');
     print('会话ID: $conversationId');
-    
+
     try {
       final queryParams = {
         'user': ApiConfig.defaultUserId,
@@ -86,10 +86,10 @@ class ChatService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('响应数据: $data');
-        
+
         final List<dynamic> messagesJson = data['data'];
         print('消息数量: ${messagesJson.length}');
-        
+
         final messages = messagesJson
             .map((json) => MessageHistory.fromJson(json))
             .expand((history) => [
@@ -100,7 +100,7 @@ class ChatService {
 
         // 按时间排序
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-        
+
         print('处理后的消息数量: ${messages.length}');
         return messages;
       } else {
@@ -142,7 +142,7 @@ class ChatService {
         final data = json.decode(response.body);
         final List<dynamic> conversationsJson = data['data'];
         print('会话数量: ${conversationsJson.length}');
-        
+
         // 打印每个会话的时间戳
         for (var json in conversationsJson) {
           print('会话ID: ${json['id']}');
@@ -160,7 +160,7 @@ class ChatService {
           print('最后更新时间: $updatedTimestamp');
           print('---');
         }
-        
+
         return conversationsJson
             .map((json) => Conversation.fromJson(json))
             .toList();
@@ -176,248 +176,95 @@ class ChatService {
     }
   }
 
-  // 流式发送消息
-  Stream<ChatMessage> sendMessageStream(String message) async* {
-    try {
-      print('=== 开始发送流式消息 ===');
-      final request = http.Request(
-        'POST',
-        Uri.parse(ApiConfig.baseUrl + ApiConfig.chatMessages),
-      );
+  Future<ChatMessage> sendMessage(String message) async {
+    print('=== 发送消息 ===');
+    print('消息内容: $message');
+    print('当前会话ID: $_currentConversationId');
 
+    final request = http.Request(
+      'POST',
+      Uri.parse(ApiConfig.baseUrl + '/chat-messages'),
+    );
+
+    try {
       request.headers.addAll({
         ...ApiConfig.headers,
         'Accept': 'text/event-stream',
       });
 
-      final body = {
+      request.body = json.encode({
         'inputs': {},
         'query': message,
         'response_mode': 'streaming',
         'conversation_id': _currentConversationId ?? '',
         'user': ApiConfig.defaultUserId,
-      };
-      request.body = json.encode(body);
-      
-      print('请求URL: ${request.url}');
-      print('请求头: ${request.headers}');
-      print('请求体: ${request.body}');
+      });
 
       final response = await _client.send(request);
       print('响应状态码: ${response.statusCode}');
-      print('响应头: ${response.headers}');
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.transform(utf8.decoder).join();
-        print('错误响应体: $errorBody');
-        throw Exception('Failed to send message: ${response.statusCode}\n$errorBody');
-      }
-
-      String currentAnswer = '';
-      String? currentMessageId;
-      String? currentConversationId;
-      Map<String, dynamic>? metadata;
-      
-      // 用于存储不完整的数据行
-      String pendingLine = '';
-
-      await for (final chunk in response.stream.transform(utf8.decoder)) {
-        print('收到数据块: $chunk');
-        
-        // 将之前未完成的行与新数据块合并
-        String processData = pendingLine + chunk;
-        pendingLine = '';
-        
-        final lines = processData.split('\n');
-        
-        // 如果最后一行不是空行，可能是不完整的，保存到pendingLine
-        if (!lines.last.trim().isEmpty) {
-          pendingLine = lines.last;
-          lines.removeLast();
-        }
-
-        for (var line in lines) {
-          if (line.trim().isEmpty) {
-            print('跳过空行');
-            continue;
-          }
-          if (!line.startsWith('data: ')) {
-            print('跳过非data行: $line');
-            continue;
-          }
-
-          try {
-            final jsonStr = line.substring(6);
-            print('解析JSON字符串: $jsonStr');
-            
-            // 验证JSON是否完整
-            try {
-              final json = jsonDecode(jsonStr);
-              print('解析后的JSON: $json');
-              
-              final streamResponse = StreamResponse.fromJson(json);
-              print('事件类型: ${streamResponse.event}');
-
-              if (streamResponse.isMessage) {
-                final answer = streamResponse.answer ?? '';
-                print('收到消息片段: $answer');
-                currentAnswer += answer;
-                currentMessageId = streamResponse.messageId;
-                currentConversationId = streamResponse.conversationId;
-                _currentConversationId = currentConversationId;
-
-                yield ChatMessage(
-                  content: currentAnswer,
-                  isUser: false,
-                  timestamp: DateTime.fromMillisecondsSinceEpoch(
-                      (streamResponse.createdAt ?? 0) * 1000),
-                  messageId: currentMessageId,
-                  conversationId: currentConversationId,
-                  isStreaming: true,
-                );
-              } else if (streamResponse.isMessageEnd) {
-                metadata = streamResponse.data;
-                print('消息结束，元数据: $metadata');
-                yield ChatMessage(
-                  content: currentAnswer,
-                  isUser: false,
-                  timestamp: DateTime.fromMillisecondsSinceEpoch(
-                      (streamResponse.createdAt ?? 0) * 1000),
-                  messageId: currentMessageId,
-                  conversationId: currentConversationId,
-                  isStreaming: false,
-                  metadata: metadata,
-                );
-              }
-            } catch (e) {
-              print('JSON解析失败，可能是不完整的数据: $e');
-              pendingLine = line;
-              continue;
-            }
-          } catch (e, stack) {
-            print('处理消息时出错:');
-            print('错误: $e');
-            print('堆栈: $stack');
-            print('问题数据行: $line');
-            continue;  // 继续处理下一行，而不是中断整个流
-          }
-        }
-      }
-    } catch (e, stack) {
-      print('发送消息时出错:');
-      print('错误: $e');
-      print('堆栈: $stack');
-      throw Exception('Error sending message: $e');
-    }
-  }
-
-  Future<ChatMessage> sendMessage(String message) async {
-    try {
-      print('=== 开始发送消息 ===');
-      print('消息内容: $message');
-      print('当前会话ID: $_currentConversationId');
-
-      final request = http.Request(
-        'POST',
-        Uri.parse(ApiConfig.baseUrl + ApiConfig.chatMessages),
-      );
-
-      // 打印请求 URL
-      print('请求URL: ${request.url}');
-
-      final headers = {
-        ...ApiConfig.headers,
-        'Accept': 'text/event-stream',
-      };
-      request.headers.addAll(headers);
-      
-      // 打印请求头
-      print('请求头:');
-      headers.forEach((key, value) => print('  $key: $value'));
-
-      final body = {
-        'inputs': {},
-        'query': message,
-        'response_mode': 'streaming',
-        'conversation_id': _currentConversationId ?? '',
-        'user': ApiConfig.defaultUserId,
-      };
-      request.body = json.encode(body);
-      
-      // 打印请求体
-      print('请求体: ${request.body}');
-
-      print('=== 发送请求 ===');
-      final streamedResponse = await _client.send(request);
-      print('响应状态码: ${streamedResponse.statusCode}');
-      print('响应头:');
-      streamedResponse.headers.forEach((key, value) => print('  $key: $value'));
-
-      if (streamedResponse.statusCode != 200) {
-        // 读取错误响应
-        final errorBody = await streamedResponse.stream.transform(utf8.decoder).join();
-        print('错误响应内容: $errorBody');
-        throw Exception('发送消息失败: ${streamedResponse.statusCode}\n响应内容: $errorBody');
+        throw Exception('发送消息失败: ${response.statusCode}\n$errorBody');
       }
 
       String currentAnswer = '';
       String? currentMessageId;
       String? currentConversationId;
       int? createdAt;
+      String pendingData = '';
 
-      print('=== 开始处理响应流 ===');
-      await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
-        print('接收到数据块: $chunk');
-        
-        final lines = chunk.split('\n');
-        for (var line in lines) {
-          if (line.trim().isEmpty) {
-            print('跳过空行');
-            continue;
-          }
-          if (!line.startsWith('data: ')) {
-            print('跳过非data行: $line');
-            continue;
-          }
+      await for (final chunk in response.stream.transform(utf8.decoder)) {
+        pendingData += chunk;
+
+        while (true) {
+          // 查找下一个完整的数据行
+          final lineEnd = pendingData.indexOf('\n');
+          if (lineEnd == -1) break; // 没有完整的行
+
+          // 提取一行数据
+          final line = pendingData.substring(0, lineEnd).trim();
+          pendingData = pendingData.substring(lineEnd + 1);
+
+          if (line.isEmpty || !line.startsWith('data: ')) continue;
 
           try {
-            final jsonStr = line.substring(6);
-            print('解析JSON: $jsonStr');
-            
+            final jsonStr = line.substring(6); // 移除 'data: ' 前缀
             final json = jsonDecode(jsonStr);
-            print('解析后的JSON: $json');
-            
             final streamResponse = StreamResponse.fromJson(json);
-            print('事件类型: ${streamResponse.event}');
 
-            if (streamResponse.isMessage) {
-              final answer = streamResponse.answer ?? '';
-              print('收到消息片段: $answer');
-              currentAnswer += answer;
+            if (streamResponse.isMessage && streamResponse.answer != null) {
+              currentAnswer += streamResponse.answer!;
               currentMessageId = streamResponse.messageId;
               currentConversationId = streamResponse.conversationId;
               createdAt = streamResponse.createdAt;
               _currentConversationId = currentConversationId;
-              
-              print('当前累积答案: $currentAnswer');
-              print('消息ID: $currentMessageId');
-              print('会话ID: $currentConversationId');
-            } else {
-              print('跳过非消息事件');
             }
-          } catch (e, stack) {
-            print('处理消息时出错:');
-            print('错误: $e');
-            print('堆栈: $stack');
-            print('问题数据: $line');
+          } catch (e) {
+            print('解析消息时出错: $e');
+            // 继续处理下一行
           }
         }
       }
 
-      print('=== 消息处理完成 ===');
-      print('最终答案: $currentAnswer');
-      print('最终消息ID: $currentMessageId');
-      print('最终会话ID: $currentConversationId');
+      // 处理最后可能剩余的数据
+      if (pendingData.isNotEmpty && pendingData.startsWith('data: ')) {
+        try {
+          final jsonStr = pendingData.substring(6);
+          final json = jsonDecode(jsonStr);
+          final streamResponse = StreamResponse.fromJson(json);
+
+          if (streamResponse.isMessage && streamResponse.answer != null) {
+            currentAnswer += streamResponse.answer!;
+            currentMessageId = streamResponse.messageId;
+            currentConversationId = streamResponse.conversationId;
+            createdAt = streamResponse.createdAt;
+            _currentConversationId = currentConversationId;
+          }
+        } catch (e) {
+          print('处理剩余数据时出错: $e');
+        }
+      }
 
       return ChatMessage(
         content: currentAnswer,
@@ -427,16 +274,15 @@ class ChatService {
         conversationId: currentConversationId,
       );
     } catch (e, stack) {
-      print('=== 发生错误 ===');
-      print('错误: $e');
+      print('发送消息时出错: $e');
       print('堆栈: $stack');
-      throw Exception('发送消息时出错: $e');
+      rethrow;
     }
   }
 
   Future<void> deleteConversation(String? conversationId) async {
     if (conversationId == null) return;
-    
+
     final response = await _client.delete(
       Uri.parse(ApiConfig.baseUrl + '/conversations/$conversationId'),
       headers: {
@@ -447,30 +293,48 @@ class ChatService {
         'user': ApiConfig.defaultUserId,
       }),
     );
-    
+
     if (response.statusCode != 200) {
       throw Exception('删除会话失败: ${response.statusCode}');
     }
   }
 
-  Future<void> renameConversation(String? conversationId, String name) async {
-    if (conversationId == null) return;
-    
+  Future<String> renameConversation(String? conversationId, String name,
+      {bool autoGenerate = false}) async {
+    if (conversationId == null) return "";
+
+    print('=== 开始重命名会话 ===');
+    print('会话ID: $conversationId');
+    print('新名称: ${name.isEmpty ? "(空)" : name}');
+    print('自动生成: $autoGenerate');
+
+    final requestBody = {
+      'name': name.isEmpty ? '' : name,
+      'user': ApiConfig.defaultUserId,
+      'auto_generate': autoGenerate,
+    };
+    print('请求体: $requestBody');
+
     final response = await _client.post(
-      Uri.parse(ApiConfig.baseUrl + '/conversations/$conversationId/name'),
+      Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId/name'),
       headers: {
         ...ApiConfig.headers,
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'name': name,
-        'user': ApiConfig.defaultUserId,
-      }),
+      body: jsonEncode(requestBody),
     );
-    
+
+    print('响应状态码: ${response.statusCode}');
+    print('响应体: ${response.body}');
+
     if (response.statusCode != 200) {
-      throw Exception('重命名会话失败: ${response.statusCode}');
+      final error = '重命名会话失败: ${response.statusCode}\n${response.body}';
+      print(error);
+      throw Exception(error);
     }
+
+    print('重命名会话成功');
+    return json.decode(response.body)['name'];
   }
 
   String? get currentConversationId => _currentConversationId;
