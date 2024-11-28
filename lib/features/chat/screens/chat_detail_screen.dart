@@ -44,6 +44,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (widget.conversationId != null) {
       _loadMessages();
     }
+    // 监听流式消息
+    _chatService.messageStreamController.stream.listen((message) {
+      if (mounted) {
+        setState(() {
+          // 如果是机器人的消息（非用户消息），总是替换最后一条消息
+          if (!message.isUser &&
+              _messages.isNotEmpty &&
+              !_messages.last.isUser) {
+            _messages[_messages.length - 1] = message;
+          } else {
+            _messages.add(message);
+          }
+        });
+        _scrollToBottom();
+      }
+    });
   }
 
   Future<void> _loadConversation() async {
@@ -105,49 +121,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
 
-    _log.info('发送新消息: $text');
-
     setState(() {
+      _messages.add(ChatMessage(
+        content: text,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
       _isLoading = true;
-      _messages.add(
-        ChatMessage(
-          content: text,
-          isUser: true,
-          timestamp: DateTime.now(),
-        ),
-      );
     });
     _scrollToBottom();
 
     try {
-      final response = await _chatService.sendMessage(text);
-
-      if (widget.conversationId == null && response.conversationId != null) {
-        _log.info('新会话创建，ID: ${response.conversationId}');
-        final name = await _chatService.renameConversation(
-          response.conversationId,
-          '',
-          autoGenerate: true,
-        );
-        _log.info('获取到的名称: $name');
-        if (mounted) {
-          setState(() {
-            _conversationTitle = name;
-          });
-        }
-      }
-
-      if (mounted) {
-        await _loadMessages();
-      }
+      await _chatService.sendMessage(text);
     } catch (e) {
-      _log.severe('发送消息失败', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('发送消息失败: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('发送失败: $e')),
         );
       }
     } finally {
@@ -242,6 +231,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           message: message.content,
           isUser: message.isUser,
           timestamp: message.timestamp,
+          isStreaming: message.isStreaming,
         );
       },
     );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -60,6 +61,8 @@ class ChatService {
   static final _log = Logger('ChatService');
   final _client = http.Client();
   String? _currentConversationId;
+  final StreamController<ChatMessage> messageStreamController =
+      StreamController<ChatMessage>();
 
   // 获取历史消息
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
@@ -129,7 +132,7 @@ class ChatService {
       };
 
       _log.info('查询参数: $queryParams');
-      final uri = Uri.parse(ApiConfig.baseUrl + '/conversations')
+      final uri = Uri.parse('${ApiConfig.baseUrl}/conversations')
           .replace(queryParameters: queryParams);
       _log.info('请求URL: $uri');
 
@@ -145,34 +148,14 @@ class ChatService {
         final List<dynamic> conversationsJson = data['data'];
         _log.info('会话数量: ${conversationsJson.length}');
 
-        // 打印每个会话的时间戳
-        for (var json in conversationsJson) {
-          _log.info('会话ID: ${json['id']}');
-          _log.info('创建时间戳: ${json['created_at']}');
-          _log.info('更新时间戳: ${json['updated_at']}');
-          final createdTimestamp = DateTime.fromMillisecondsSinceEpoch(
-            json['created_at'] * 1000,
-            isUtc: true,
-          ).toLocal();
-          final updatedTimestamp = DateTime.fromMillisecondsSinceEpoch(
-            json['updated_at'] * 1000,
-            isUtc: true,
-          ).toLocal();
-          _log.info('创建时间: $createdTimestamp');
-          _log.info('最后更新时间: $updatedTimestamp');
-          _log.info('---');
-        }
-
         return conversationsJson
             .map((json) => Conversation.fromJson(json))
             .toList();
       } else {
-        _log.severe('获取会话列表失败: ${response.statusCode}');
         _log.fine('错误响应: ${response.body}');
         throw Exception('获取会话列表失败: ${response.statusCode}');
       }
     } catch (e, stack) {
-      _log.severe('获取会话列表出错: $e');
       _log.fine('堆栈: $stack');
       throw Exception('获取会话列表出错: $e');
     }
@@ -216,22 +199,29 @@ class ChatService {
       int? createdAt;
       String pendingData = '';
 
+      // 创建初始消息
+      final initialMessage = ChatMessage(
+        content: '',
+        isUser: false,
+        timestamp: DateTime.now(),
+        isStreaming: true,
+      );
+      messageStreamController.add(initialMessage);
+
       await for (final chunk in response.stream.transform(utf8.decoder)) {
         pendingData += chunk;
 
         while (true) {
-          // 查找下一个完整的数据行
           final lineEnd = pendingData.indexOf('\n');
-          if (lineEnd == -1) break; // 没有完整的行
+          if (lineEnd == -1) break;
 
-          // 提取一行数据
           final line = pendingData.substring(0, lineEnd).trim();
           pendingData = pendingData.substring(lineEnd + 1);
 
           if (line.isEmpty || !line.startsWith('data: ')) continue;
 
           try {
-            final jsonStr = line.substring(6); // 移除 'data: ' 前缀
+            final jsonStr = line.substring(6);
             final json = jsonDecode(jsonStr);
             final streamResponse = StreamResponse.fromJson(json);
 
@@ -241,39 +231,42 @@ class ChatService {
               currentConversationId = streamResponse.conversationId;
               createdAt = streamResponse.createdAt;
               _currentConversationId = currentConversationId;
+
+              // 发送更新的消息
+              final updatedMessage = ChatMessage(
+                content: currentAnswer,
+                isUser: false,
+                timestamp: DateTime.fromMillisecondsSinceEpoch(
+                    createdAt ?? DateTime.now().millisecondsSinceEpoch),
+                messageId: currentMessageId,
+                conversationId: currentConversationId,
+                isStreaming: true,
+              );
+              messageStreamController.add(updatedMessage);
             }
           } catch (e) {
             _log.severe('解析消息时出错: $e');
-            // 继续处理下一行
           }
         }
       }
 
-      // 处理最后可能剩余的数据
-      if (pendingData.isNotEmpty && pendingData.startsWith('data: ')) {
-        try {
-          final jsonStr = pendingData.substring(6);
-          final json = jsonDecode(jsonStr);
-          final streamResponse = StreamResponse.fromJson(json);
-
-          if (streamResponse.isMessage && streamResponse.answer != null) {
-            currentAnswer += streamResponse.answer!;
-            currentMessageId = streamResponse.messageId;
-            currentConversationId = streamResponse.conversationId;
-            createdAt = streamResponse.createdAt;
-            _currentConversationId = currentConversationId;
-          }
-        } catch (e) {
-          _log.severe('处理剩余数据时出错: $e');
-        }
-      }
-
-      return ChatMessage(
+      // 发送最终消息
+      final finalMessage = ChatMessage(
         content: currentAnswer,
         isUser: false,
-        timestamp: DateTime.fromMillisecondsSinceEpoch((createdAt ?? 0) * 1000),
+        timestamp: DateTime.fromMillisecondsSinceEpoch(
+            createdAt ?? DateTime.now().millisecondsSinceEpoch),
         messageId: currentMessageId,
         conversationId: currentConversationId,
+        isStreaming: false,
+      );
+      messageStreamController.add(finalMessage);
+
+      // 返回空消息，避免触发新的消息添加
+      return ChatMessage(
+        content: '',
+        isUser: false,
+        timestamp: DateTime.now(),
       );
     } catch (e, stack) {
       _log.severe('发送消息时出错: $e');
@@ -286,7 +279,7 @@ class ChatService {
     if (conversationId == null) return;
 
     final response = await _client.delete(
-      Uri.parse(ApiConfig.baseUrl + '/conversations/$conversationId'),
+      Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId'),
       headers: {
         ...ApiConfig.headers,
         'Content-Type': 'application/json',

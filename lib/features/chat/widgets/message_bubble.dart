@@ -5,12 +5,14 @@ class MessageBubble extends StatelessWidget {
   final String message;
   final bool isUser;
   final DateTime timestamp;
+  final bool isStreaming;
 
   const MessageBubble({
     Key? key,
     required this.message,
     required this.isUser,
     required this.timestamp,
+    this.isStreaming = false,
   }) : super(key: key);
 
   @override
@@ -19,7 +21,8 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
@@ -52,33 +55,33 @@ class MessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : Colors.black87,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          message,
+                          style: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
                     time,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
               ],
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(Icons.person, color: Colors.white),
-            ),
-          ],
+          if (isUser) const SizedBox(width: 8),
         ],
       ),
     );
