@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 import '../config/api_config.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
@@ -56,13 +57,14 @@ class ChatMessage {
 }
 
 class ChatService {
-  final http.Client _client = http.Client();
+  static final _log = Logger('ChatService');
+  final _client = http.Client();
   String? _currentConversationId;
 
   // 获取历史消息
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
-    print('=== 开始获取历史消息 ===');
-    print('会话ID: $conversationId');
+    _log.info('开始获取历史消息');
+    _log.info('会话ID: $conversationId');
 
     try {
       final queryParams = {
@@ -70,25 +72,25 @@ class ChatService {
         'conversation_id': conversationId,
       };
 
-      print('查询参数: $queryParams');
+      _log.info('查询参数: $queryParams');
       final uri = Uri.parse(ApiConfig.baseUrl + ApiConfig.messages)
           .replace(queryParameters: queryParams);
-      print('请求URL: $uri');
+      _log.info('请求URL: $uri');
 
       final response = await _client.get(
         uri,
         headers: ApiConfig.headers,
       );
 
-      print('响应状态码: ${response.statusCode}');
-      print('响应头: ${response.headers}');
+      _log.info('响应状态码: ${response.statusCode}');
+      _log.fine('响应头: ${response.headers}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('响应数据: $data');
+        _log.info('响应数据: $data');
 
         final List<dynamic> messagesJson = data['data'];
-        print('消息数量: ${messagesJson.length}');
+        _log.info('消息数量: ${messagesJson.length}');
 
         final messages = messagesJson
             .map((json) => MessageHistory.fromJson(json))
@@ -101,24 +103,24 @@ class ChatService {
         // 按时间排序
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-        print('处理后的消息数量: ${messages.length}');
+        _log.info('处理后的消息数量: ${messages.length}');
         return messages;
       } else {
         final error = '获取历史消息失败: ${response.statusCode}\n${response.body}';
-        print(error);
+        _log.severe(error);
         throw Exception(error);
       }
     } catch (e, stack) {
-      print('获取历史消息时出错: $e');
-      print('错误堆栈: $stack');
+      _log.severe('获取历史消息时出错: $e');
+      _log.fine('错误堆栈: $stack');
       throw Exception('获取历史消息失败: $e');
     }
   }
 
   // 获取会话列表
   Future<List<Conversation>> getConversations({int limit = 20}) async {
-    print('=== 开始获取会话列表 ===');
-    print('限制数量: $limit');
+    _log.info('开始获取会话列表');
+    _log.info('限制数量: $limit');
 
     try {
       final queryParams = {
@@ -126,28 +128,28 @@ class ChatService {
         'limit': limit.toString(),
       };
 
-      print('查询参数: $queryParams');
+      _log.info('查询参数: $queryParams');
       final uri = Uri.parse(ApiConfig.baseUrl + '/conversations')
           .replace(queryParameters: queryParams);
-      print('请求URL: $uri');
+      _log.info('请求URL: $uri');
 
       final response = await _client.get(
         uri,
         headers: ApiConfig.headers,
       );
 
-      print('响应状态码: ${response.statusCode}');
+      _log.info('响应状态码: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> conversationsJson = data['data'];
-        print('会话数量: ${conversationsJson.length}');
+        _log.info('会话数量: ${conversationsJson.length}');
 
         // 打印每个会话的时间戳
         for (var json in conversationsJson) {
-          print('会话ID: ${json['id']}');
-          print('创建时间戳: ${json['created_at']}');
-          print('更新时间戳: ${json['updated_at']}');
+          _log.info('会话ID: ${json['id']}');
+          _log.info('创建时间戳: ${json['created_at']}');
+          _log.info('更新时间戳: ${json['updated_at']}');
           final createdTimestamp = DateTime.fromMillisecondsSinceEpoch(
             json['created_at'] * 1000,
             isUtc: true,
@@ -156,34 +158,34 @@ class ChatService {
             json['updated_at'] * 1000,
             isUtc: true,
           ).toLocal();
-          print('创建时间: $createdTimestamp');
-          print('最后更新时间: $updatedTimestamp');
-          print('---');
+          _log.info('创建时间: $createdTimestamp');
+          _log.info('最后更新时间: $updatedTimestamp');
+          _log.info('---');
         }
 
         return conversationsJson
             .map((json) => Conversation.fromJson(json))
             .toList();
       } else {
-        print('获取会话列表失败: ${response.statusCode}');
-        print('错误响应: ${response.body}');
+        _log.severe('获取会话列表失败: ${response.statusCode}');
+        _log.fine('错误响应: ${response.body}');
         throw Exception('获取会话列表失败: ${response.statusCode}');
       }
     } catch (e, stack) {
-      print('获取会话列表出错: $e');
-      print('堆栈: $stack');
+      _log.severe('获取会话列表出错: $e');
+      _log.fine('堆栈: $stack');
       throw Exception('获取会话列表出错: $e');
     }
   }
 
   Future<ChatMessage> sendMessage(String message) async {
-    print('=== 发送消息 ===');
-    print('消息内容: $message');
-    print('当前会话ID: $_currentConversationId');
+    _log.info('发送消息');
+    _log.info('消息内容: $message');
+    _log.info('当前会话ID: $_currentConversationId');
 
     final request = http.Request(
       'POST',
-      Uri.parse(ApiConfig.baseUrl + '/chat-messages'),
+      Uri.parse('${ApiConfig.baseUrl}/chat-messages'),
     );
 
     try {
@@ -201,7 +203,7 @@ class ChatService {
       });
 
       final response = await _client.send(request);
-      print('响应状态码: ${response.statusCode}');
+      _log.info('响应状态码: ${response.statusCode}');
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.transform(utf8.decoder).join();
@@ -241,7 +243,7 @@ class ChatService {
               _currentConversationId = currentConversationId;
             }
           } catch (e) {
-            print('解析消息时出错: $e');
+            _log.severe('解析消息时出错: $e');
             // 继续处理下一行
           }
         }
@@ -262,7 +264,7 @@ class ChatService {
             _currentConversationId = currentConversationId;
           }
         } catch (e) {
-          print('处理剩余数据时出错: $e');
+          _log.severe('处理剩余数据时出错: $e');
         }
       }
 
@@ -274,8 +276,8 @@ class ChatService {
         conversationId: currentConversationId,
       );
     } catch (e, stack) {
-      print('发送消息时出错: $e');
-      print('堆栈: $stack');
+      _log.severe('发送消息时出错: $e');
+      _log.fine('堆栈: $stack');
       rethrow;
     }
   }
@@ -301,19 +303,21 @@ class ChatService {
 
   Future<String> renameConversation(String? conversationId, String name,
       {bool autoGenerate = false}) async {
-    if (conversationId == null) return "";
+    if (conversationId == null) {
+      throw Exception('会话ID不能为空');
+    }
 
-    print('=== 开始重命名会话 ===');
-    print('会话ID: $conversationId');
-    print('新名称: ${name.isEmpty ? "(空)" : name}');
-    print('自动生成: $autoGenerate');
+    _log.info('开始重命名会话');
+    _log.info('会话ID: $conversationId');
+    _log.info('新名称: ${name.isEmpty ? "(空)" : name}');
+    _log.info('自动生成: $autoGenerate');
 
     final requestBody = {
       'name': name.isEmpty ? '' : name,
       'user': ApiConfig.defaultUserId,
       'auto_generate': autoGenerate,
     };
-    print('请求体: $requestBody');
+    _log.info('请求体: $requestBody');
 
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId/name'),
@@ -324,16 +328,16 @@ class ChatService {
       body: jsonEncode(requestBody),
     );
 
-    print('响应状态码: ${response.statusCode}');
-    print('响应体: ${response.body}');
+    _log.info('响应状态码: ${response.statusCode}');
+    _log.fine('响应体: ${response.body}');
 
     if (response.statusCode != 200) {
       final error = '重命名会话失败: ${response.statusCode}\n${response.body}';
-      print(error);
+      _log.severe(error);
       throw Exception(error);
     }
 
-    print('重命名会话成功');
+    _log.info('重命名会话成功');
     return json.decode(response.body)['name'];
   }
 

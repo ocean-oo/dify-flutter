@@ -1,5 +1,6 @@
 import 'package:chat_app/features/chat/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import '../widgets/chat_list_item.dart';
 import '../../../core/services/chat_service.dart';
 import '../models/conversation.dart';
@@ -13,6 +14,7 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+  final _logger = Logger('ChatListScreen');
   List<Conversation> _conversations = [];
   bool _isLoading = false;
   String? _error;
@@ -26,7 +28,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _loadConversations() async {
     if (_isLoading) return;
 
-    print('=== 开始刷新会话列表 ===');
+    _logger.info('=== 开始刷新会话列表 ===');
     setState(() {
       _isLoading = true;
       _error = null;
@@ -39,9 +41,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _conversations = conversations;
         _isLoading = false;
       });
-      print('=== 会话列表刷新完成，共 ${conversations.length} 个会话 ===');
+      _logger.info('=== 会话列表刷新完成，共 ${conversations.length} 个会话 ===');
     } catch (e) {
-      print('=== 会话列表刷新失败: $e ===');
+      _logger.info('=== 会话列表刷新失败: $e ===');
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -128,7 +130,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               padding: const EdgeInsets.all(8.0),
               itemBuilder: (context, index) {
                 final conversation = _conversations[index];
-                print('渲染会话: ${conversation.id}');
+                _logger.info('渲染会话: ${conversation.id}');
                 final formattedTime = _formatTimestamp(conversation.updatedAt);
                 return ChatListItem(
                   title: conversation.name,

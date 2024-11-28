@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import '../../../core/services/chat_service.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
@@ -27,6 +28,7 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  static final _log = Logger('ChatDetailScreen');
   final ChatService _chatService = ChatService();
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
@@ -45,8 +47,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadConversation() async {
-    print('=== 开始加载会话 ===');
-    print('会话ID: ${widget.conversationId}');
+    _log.info('开始加载会话，会话ID: ${widget.conversationId}');
 
     setState(() {
       _isLoading = true;
@@ -55,8 +56,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadMessages() async {
-    print('=== 开始加载历史消息 ===');
-    print('当前会话ID: ${_chatService.currentConversationId}');
+    _log.info('开始加载历史消息，当前会话ID: ${_chatService.currentConversationId}');
 
     setState(() {
       _isLoading = true;
@@ -66,7 +66,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final messages = await _chatService
           .getMessageHistory(_chatService.currentConversationId!);
-      print('获取到 ${messages.length} 条历史消息');
+      _log.info('获取到 ${messages.length} 条历史消息');
 
       if (mounted) {
         setState(() {
@@ -75,13 +75,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         });
       }
 
-      print('历史消息加载完成');
+      _log.info('历史消息加载完成');
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
     } catch (e) {
-      print('加载历史消息出错: $e');
+      _log.severe('加载历史消息出错', e);
       setState(() {
         _error = e.toString();
       });
@@ -105,8 +105,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
 
-    print('=== 发送新消息 ===');
-    print('消息内容: $text');
+    _log.info('发送新消息: $text');
 
     setState(() {
       _isLoading = true;
@@ -124,13 +123,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final response = await _chatService.sendMessage(text);
 
       if (widget.conversationId == null && response.conversationId != null) {
-        print('新会话创建，ID: ${response.conversationId}');
+        _log.info('新会话创建，ID: ${response.conversationId}');
         final name = await _chatService.renameConversation(
           response.conversationId,
           '',
           autoGenerate: true,
         );
-        print('获取到的名称: $name');
+        _log.info('获取到的名称: $name');
         if (mounted) {
           setState(() {
             _conversationTitle = name;
@@ -142,7 +141,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         await _loadMessages();
       }
     } catch (e) {
-      print('发送消息失败: $e');
+      _log.severe('发送消息失败', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
