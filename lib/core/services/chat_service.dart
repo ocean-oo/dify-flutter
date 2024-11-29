@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
@@ -55,6 +56,30 @@ class ChatMessage {
       conversationId: history.conversationId,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content,
+      'isUser': isUser,
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'messageId': messageId,
+      'conversationId': conversationId,
+      'isStreaming': isStreaming,
+      'metadata': metadata,
+    };
+  }
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      content: json['content'],
+      isUser: json['isUser'],
+      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
+      messageId: json['messageId'],
+      conversationId: json['conversationId'],
+      isStreaming: json['isStreaming'],
+      metadata: json['metadata'],
+    );
+  }
 }
 
 class ChatService {
@@ -64,12 +89,63 @@ class ChatService {
   final StreamController<ChatMessage> messageStreamController =
       StreamController<ChatMessage>();
 
-  // 获取历史消息
-  Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
-    _log.info('开始获取历史消息');
-    _log.info('会话ID: $conversationId');
+  String? get currentConversationId => _currentConversationId;
+
+  void setConversationId(String? id) {
+    _currentConversationId = id;
+  }
+
+  // 缓存消息
+  Future<void> _cacheMessages(
+      String conversationId, List<ChatMessage> messages) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'chat_messages_$conversationId';
+    final messagesJson = messages.map((m) => m.toJson()).toList();
+    await prefs.setString(key, jsonEncode(messagesJson));
+    _log.info('已缓存会话 $conversationId 的 ${messages.length} 条消息');
+  }
+
+  // 获取缓存的消息
+  Future<List<ChatMessage>> _getCachedMessages(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'chat_messages_$conversationId';
+    final messagesJson = prefs.getString(key);
+    if (messagesJson == null) {
+      _log.info('未找到会话 $conversationId 的缓存消息');
+      return [];
+    }
 
     try {
+      final List<dynamic> decoded = jsonDecode(messagesJson);
+      final messages = decoded.map((m) => ChatMessage.fromJson(m)).toList();
+      _log.info('从缓存加载了 ${messages.length} 条消息');
+      return messages;
+    } catch (e) {
+      _log.severe('解析缓存消息失败: $e');
+      return [];
+    }
+  }
+
+  // 添加新消息到缓存
+  Future<void> _addMessageToCache(
+      String conversationId, ChatMessage message) async {
+    final cachedMessages = await _getCachedMessages(conversationId);
+    cachedMessages.add(message);
+    await _cacheMessages(conversationId, cachedMessages);
+  }
+
+  Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
+    _log.info('获取会话消息历史: $conversationId');
+
+    try {
+      // 先尝试从缓存获取消息
+      final cachedMessages = await _getCachedMessages(conversationId);
+      if (cachedMessages.isNotEmpty) {
+        _log.info('使用缓存的消息');
+        return cachedMessages;
+      }
+
+      // 如果缓存为空，则从服务器获取
       final queryParams = {
         'user': ApiConfig.defaultUserId,
         'conversation_id': conversationId,
@@ -106,6 +182,9 @@ class ChatService {
         // 按时间排序
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
+        // 缓存获取到的消息
+        await _cacheMessages(conversationId, messages);
+
         _log.info('处理后的消息数量: ${messages.length}');
         return messages;
       } else {
@@ -114,13 +193,12 @@ class ChatService {
         throw Exception(error);
       }
     } catch (e, stack) {
-      _log.severe('获取历史消息时出错: $e');
+      _log.severe('获取消息历史出错: $e');
       _log.fine('错误堆栈: $stack');
-      throw Exception('获取历史消息失败: $e');
+      rethrow;
     }
   }
 
-  // 获取会话列表
   Future<List<Conversation>> getConversations({int limit = 20}) async {
     _log.info('开始获取会话列表');
     _log.info('限制数量: $limit');
@@ -165,6 +243,17 @@ class ChatService {
     _log.info('发送消息');
     _log.info('消息内容: $message');
     _log.info('当前会话ID: $_currentConversationId');
+
+    // 先添加用户消息到缓存
+    final userMessage = ChatMessage(
+      content: message,
+      isUser: true,
+      timestamp: DateTime.now(),
+      conversationId: _currentConversationId,
+    );
+    if (_currentConversationId != null) {
+      await _addMessageToCache(_currentConversationId!, userMessage);
+    }
 
     final request = http.Request(
       'POST',
@@ -262,6 +351,10 @@ class ChatService {
       );
       messageStreamController.add(finalMessage);
 
+      if (currentConversationId != null) {
+        await _addMessageToCache(currentConversationId, finalMessage);
+      }
+
       // 返回空消息，避免触发新的消息添加
       return ChatMessage(
         content: '',
@@ -334,13 +427,7 @@ class ChatService {
     return json.decode(response.body)['name'];
   }
 
-  String? get currentConversationId => _currentConversationId;
-
   void resetConversation() {
     _currentConversationId = null;
-  }
-
-  void setConversationId(String? id) {
-    _currentConversationId = id;
   }
 }
