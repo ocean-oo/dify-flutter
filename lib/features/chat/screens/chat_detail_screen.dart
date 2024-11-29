@@ -265,7 +265,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                 try {
                   await _chatService.renameConversation(
-                      widget.conversationId, newName);
+                      widget.conversationId!, newName);
                   setState(() {
                     _conversationTitle = newName;
                   });
@@ -315,9 +315,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     if (confirmed == true) {
       try {
-        await _chatService.deleteConversation(widget.conversationId);
+        await _chatService.deleteConversation(widget.conversationId!);
         if (!mounted) return;
-        Navigator.pop(context);
+        Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('会话已删除')),
         );

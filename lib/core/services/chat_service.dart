@@ -134,6 +134,14 @@ class ChatService {
     await _cacheMessages(conversationId, cachedMessages);
   }
 
+  // 删除会话的缓存消息
+  Future<void> clearConversationCache(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'chat_messages_$conversationId';
+    await prefs.remove(key);
+    _log.info('已清除会话 $conversationId 的缓存消息');
+  }
+
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
     _log.info('获取会话消息历史: $conversationId');
 
@@ -368,31 +376,39 @@ class ChatService {
     }
   }
 
-  Future<void> deleteConversation(String? conversationId) async {
-    if (conversationId == null) return;
+  Future<void> deleteConversation(String conversationId) async {
+    _log.info('删除会话: $conversationId');
 
-    final response = await _client.delete(
-      Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId'),
-      headers: {
-        ...ApiConfig.headers,
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'user': ApiConfig.defaultUserId,
-      }),
-    );
+    try {
+      final response = await _client.delete(
+        Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId'),
+        headers: {
+          ...ApiConfig.headers,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'user': ApiConfig.defaultUserId,
+        }),
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('删除会话失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        // 同时删除缓存
+        await clearConversationCache(conversationId);
+        _log.info('成功删除会话及其缓存');
+      } else {
+        _log.info(response.body);
+        final error = json.decode(response.body)['message'];
+        throw Exception(error);
+      }
+    } catch (e, stack) {
+      _log.severe('删除会话时出错: $e');
+      _log.fine('错误堆栈: $stack');
+      rethrow;
     }
   }
 
-  Future<String> renameConversation(String? conversationId, String name,
+  Future<String> renameConversation(String conversationId, String name,
       {bool autoGenerate = false}) async {
-    if (conversationId == null) {
-      throw Exception('会话ID不能为空');
-    }
-
     _log.info('开始重命名会话');
     _log.info('会话ID: $conversationId');
     _log.info('新名称: ${name.isEmpty ? "(空)" : name}');

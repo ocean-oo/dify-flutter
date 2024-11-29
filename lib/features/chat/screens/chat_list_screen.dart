@@ -72,6 +72,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
+  void _openChat(Conversation conversation) async {
+    final needRefresh = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatDetailScreen(
+          conversationId: conversation.id,
+          title: conversation.name,
+        ),
+      ),
+    );
+
+    // 如果返回值为 true，说明需要刷新列表
+    if (needRefresh == true) {
+      _loadConversations();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,15 +154,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   lastMessage: '点击继续对话',
                   timestamp: formattedTime,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      ChatDetailScreen.route(
-                        arguments: {
-                          'id': conversation.id,
-                          'title': conversation.name,
-                        },
-                      ),
-                    );
+                    _openChat(conversation);
                   },
                 );
               },
