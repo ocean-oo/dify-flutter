@@ -151,7 +151,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 final formattedTime = _formatTimestamp(conversation.updatedAt);
                 return ChatListItem(
                   title: conversation.name,
-                  lastMessage: '点击继续对话',
                   timestamp: formattedTime,
                   onTap: () {
                     _openChat(conversation);

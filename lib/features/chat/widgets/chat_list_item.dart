@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 class ChatListItem extends StatelessWidget {
   final String title;
-  final String lastMessage;
   final String timestamp;
   final VoidCallback onTap;
 
   const ChatListItem({
     Key? key,
     required this.title,
-    required this.lastMessage,
     required this.timestamp,
     required this.onTap,
   }) : super(key: key);
@@ -33,11 +31,6 @@ class ChatListItem extends StatelessWidget {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
-        ),
-        subtitle: Text(
-          lastMessage,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
         trailing: Text(
           timestamp,
