@@ -19,6 +19,84 @@ class MessageBubble extends StatelessWidget {
     this.isStreaming = false,
   });
 
+  Widget _buildImage(Uri uri, String? title, String? alt) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxHeight: 400,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          uri.toString(),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            _log.warning('图片加载失败: $uri', error, stackTrace);
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.grey[400],
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    alt ?? '图片加载失败',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (title != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final time = DateFormat('HH:mm').format(timestamp);
@@ -66,6 +144,7 @@ class MessageBubble extends StatelessWidget {
                     children: [
                       MarkdownBody(
                         data: message,
+                        imageBuilder: _buildImage,
                         styleSheet: MarkdownStyleSheet(
                           p: TextStyle(
                             color: isUser
@@ -151,7 +230,9 @@ class MessageBubble extends StatelessWidget {
                                 }
                               }
                             } catch (e) {
-                              _log.severe('打开链接时出错$e', );
+                              _log.severe(
+                                '打开链接时出错$e',
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
