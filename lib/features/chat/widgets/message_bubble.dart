@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:logging/logging.dart';
 
 class MessageBubble extends StatelessWidget {
   final String message;
   final bool isUser;
   final DateTime timestamp;
   final bool isStreaming;
+  static final _log = Logger('MessageBubble');
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isUser,
     required this.timestamp,
     this.isStreaming = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,27 +59,133 @@ class MessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
+                    crossAxisAlignment: isUser
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          message,
-                          style: TextStyle(
+                      MarkdownBody(
+                        data: message,
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
                             color: isUser
                                 ? Colors.white
                                 : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 16,
                           ),
+                          code: TextStyle(
+                            backgroundColor: isUser
+                                ? Theme.of(context).primaryColor
+                                : Theme.of(context).cardColor,
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 14,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: isUser
+                                ? Theme.of(context).primaryColor
+                                : Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          blockquote: TextStyle(
+                            color: isUser
+                                ? Colors.white70
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 16,
+                          ),
+                          h1: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 24,
+                          ),
+                          h2: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 20,
+                          ),
+                          h3: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 18,
+                          ),
+                          em: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          strong: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          a: TextStyle(
+                            color: isUser
+                                ? Colors.white
+                                : Theme.of(context).primaryColor,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                        onTapLink: (text, href, title) async {
+                          if (href != null) {
+                            try {
+                              final url = Uri.parse(href);
+                              final canLaunch = await canLaunchUrl(url);
+                              if (canLaunch) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('无法打开链接: $href'),
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              _log.severe('打开链接时出错$e', );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('打开链接失败: $e'),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      ),
+                      if (isStreaming) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isUser
+                                  ? Colors.white
+                                  : Theme.of(context).primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          time,
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    time,
-                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
               ],
