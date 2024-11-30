@@ -120,6 +120,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
+    var resMessage;
 
     setState(() {
       _messages.add(ChatMessage(
@@ -132,7 +133,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _scrollToBottom();
 
     try {
-      await _chatService.sendMessage(text);
+      resMessage = await _chatService.sendMessage(text);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +144,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+        });
+      }
+    }
+    if (widget.conversationId == null && resMessage.conversationId != null) {
+      _log.info('新会话创建，ID: ${resMessage.conversationId}');
+      final name = await _chatService.renameConversation(
+        resMessage.conversationId!,
+        '',
+        autoGenerate: true,
+      );
+      _log.info('获取到的名称: $name');
+      if (mounted) {
+        setState(() {
+          _conversationTitle = name;
         });
       }
     }
@@ -178,8 +193,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               const PopupMenuItem<String>(
                 value: 'delete',
                 child: ListTile(
-                  leading: Icon(Icons.delete, color: Colors.red),
-                  title: Text('删除会话', style: TextStyle(color: Colors.red)),
+                  leading: Icon(Icons.delete),
+                  title: Text('删除会话'),
                   contentPadding: EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),

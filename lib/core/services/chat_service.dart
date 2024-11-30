@@ -252,16 +252,13 @@ class ChatService {
     _log.info('消息内容: $message');
     _log.info('当前会话ID: $_currentConversationId');
 
-    // 先添加用户消息到缓存
+    // 先新建用户消息
     final userMessage = ChatMessage(
       content: message,
       isUser: true,
       timestamp: DateTime.now(),
       conversationId: _currentConversationId,
     );
-    if (_currentConversationId != null) {
-      await _addMessageToCache(_currentConversationId!, userMessage);
-    }
 
     final request = http.Request(
       'POST',
@@ -334,7 +331,8 @@ class ChatService {
                 content: currentAnswer,
                 isUser: false,
                 timestamp: DateTime.fromMillisecondsSinceEpoch(
-                    createdAt ?? DateTime.now().millisecondsSinceEpoch),
+                    (createdAt ?? DateTime.now().millisecondsSinceEpoch) *
+                        1000),
                 messageId: currentMessageId,
                 conversationId: currentConversationId,
                 isStreaming: true,
@@ -352,23 +350,20 @@ class ChatService {
         content: currentAnswer,
         isUser: false,
         timestamp: DateTime.fromMillisecondsSinceEpoch(
-            createdAt ?? DateTime.now().millisecondsSinceEpoch),
+            (createdAt ?? DateTime.now().millisecondsSinceEpoch) * 1000),
         messageId: currentMessageId,
         conversationId: currentConversationId,
         isStreaming: false,
       );
       messageStreamController.add(finalMessage);
 
+      // 收到返回时，同时更新用户消息和最终消息
       if (currentConversationId != null) {
+        await _addMessageToCache(currentConversationId, userMessage);
         await _addMessageToCache(currentConversationId, finalMessage);
       }
 
-      // 返回空消息，避免触发新的消息添加
-      return ChatMessage(
-        content: '',
-        isUser: false,
-        timestamp: DateTime.now(),
-      );
+      return finalMessage;
     } catch (e, stack) {
       _log.severe('发送消息时出错: $e');
       _log.fine('堆栈: $stack');
@@ -441,9 +436,5 @@ class ChatService {
 
     _log.info('重命名会话成功');
     return json.decode(response.body)['name'];
-  }
-
-  void resetConversation() {
-    _currentConversationId = null;
   }
 }
