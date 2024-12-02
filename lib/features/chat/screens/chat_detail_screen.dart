@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/services/file_upload_service.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
 
@@ -120,8 +121,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  Future<void> _handleSubmitted(String text) async {
+  Future<void> _handleSubmitted(String text,
+      {List<UploadedFile>? files}) async {
     if (text.trim().isEmpty) return;
+
+    _log.info('chat_detail_screen 收到消息，文件数量: ${files?.length ?? 0}');
+    if (files != null && files.isNotEmpty) {
+      _log.info('文件列表: ${files.map((f) => f.name).join(', ')}');
+    }
+
     ChatMessage? resMessage;
 
     setState(() {
@@ -129,13 +137,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         content: text,
         isUser: true,
         timestamp: DateTime.now(),
+        files: files,
       ));
       _isLoading = true;
     });
     _scrollToBottom();
 
     try {
-      resMessage = await _chatService.sendMessage(text);
+      resMessage = await _chatService.sendMessage(text, files: files);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

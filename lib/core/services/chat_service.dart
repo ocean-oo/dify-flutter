@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
 import '../../features/chat/models/stream_response.dart';
+import '../../../core/services/file_upload_service.dart';
 
 class ChatMessage {
   final String content;
@@ -16,6 +17,7 @@ class ChatMessage {
   final String? conversationId;
   final bool isStreaming;
   final Map<String, dynamic>? metadata;
+  final List<UploadedFile>? files;
 
   ChatMessage({
     required this.content,
@@ -25,6 +27,7 @@ class ChatMessage {
     this.conversationId,
     this.isStreaming = false,
     this.metadata,
+    this.files,
   });
 
   ChatMessage copyWith({
@@ -35,6 +38,7 @@ class ChatMessage {
     String? conversationId,
     bool? isStreaming,
     Map<String, dynamic>? metadata,
+    List<UploadedFile>? files,
   }) {
     return ChatMessage(
       content: content ?? this.content,
@@ -44,16 +48,7 @@ class ChatMessage {
       conversationId: conversationId ?? this.conversationId,
       isStreaming: isStreaming ?? this.isStreaming,
       metadata: metadata ?? this.metadata,
-    );
-  }
-
-  factory ChatMessage.fromMessageHistory(MessageHistory history, bool isUser) {
-    return ChatMessage(
-      content: isUser ? history.query : history.answer,
-      isUser: isUser,
-      timestamp: history.createdAt,
-      messageId: history.id,
-      conversationId: history.conversationId,
+      files: files ?? this.files,
     );
   }
 
@@ -66,6 +61,7 @@ class ChatMessage {
       'conversationId': conversationId,
       'isStreaming': isStreaming,
       'metadata': metadata,
+      'files': files?.map((f) => f.toJson()).toList(),
     };
   }
 
@@ -76,8 +72,29 @@ class ChatMessage {
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
       messageId: json['messageId'],
       conversationId: json['conversationId'],
-      isStreaming: json['isStreaming'],
+      isStreaming: json['isStreaming'] ?? false,
       metadata: json['metadata'],
+      files: (json['files'] as List<dynamic>?)
+          ?.map((f) => UploadedFile(
+                id: f['upload_file_id'],
+                mimeType: f['type'],
+                name: f['name'] ?? '',
+                size: f['size'] ?? 0,
+                extension: f['extension'] ?? '',
+                createdAt: f['created_at'],
+                createdBy: f['created_by'],
+              ))
+          .toList(),
+    );
+  }
+
+  factory ChatMessage.fromMessageHistory(MessageHistory history, bool isUser) {
+    return ChatMessage(
+      content: isUser ? history.query : history.answer,
+      isUser: isUser,
+      timestamp: history.createdAt,
+      messageId: history.id,
+      conversationId: history.conversationId,
     );
   }
 }
@@ -247,10 +264,14 @@ class ChatService {
     }
   }
 
-  Future<ChatMessage> sendMessage(String message) async {
+  Future<ChatMessage> sendMessage(String message,
+      {List<UploadedFile>? files}) async {
     _log.info('发送消息');
     _log.info('消息内容: $message');
     _log.info('当前会话ID: $_currentConversationId');
+    if (files != null && files.isNotEmpty) {
+      _log.info('附带文件数量: ${files.length}');
+    }
 
     // 先新建用户消息
     final userMessage = ChatMessage(
@@ -258,6 +279,7 @@ class ChatService {
       isUser: true,
       timestamp: DateTime.now(),
       conversationId: _currentConversationId,
+      files: files,
     );
 
     final request = http.Request(
@@ -269,15 +291,22 @@ class ChatService {
       request.headers.addAll({
         ...ApiConfig.headers,
         'Accept': 'text/event-stream',
+        'Content-Type': 'application/json',
       });
 
-      request.body = json.encode({
+      final Map<String, dynamic> body = {
         'inputs': {},
         'query': message,
         'response_mode': 'streaming',
         'conversation_id': _currentConversationId ?? '',
         'user': ApiConfig.defaultUserId,
-      });
+      };
+
+      if (files != null && files.isNotEmpty) {
+        body['files'] = files.map((f) => f.toJson()).toList();
+      }
+
+      request.body = json.encode(body);
 
       final response = await _client.send(request);
       _log.info('响应状态码: ${response.statusCode}');

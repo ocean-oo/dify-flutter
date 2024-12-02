@@ -22,7 +22,7 @@ class ChatListItem extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor,
           child: Text(
-            title.characters.first,
+            title.isEmpty ? '' : title.characters.first,
             style: const TextStyle(color: Colors.white),
           ),
         ),

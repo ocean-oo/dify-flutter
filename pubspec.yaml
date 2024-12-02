@@ -11,11 +11,15 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   http: ^1.1.0
-  intl: ^0.19.0
   logging: ^1.2.0
   shared_preferences: ^2.3.3
   flutter_markdown: ^0.6.18
   url_launcher: ^6.2.2
+  intl: ^0.18.1
+  image_picker: ^1.0.4
+  file_picker: ^8.1.4
+  mime: ^1.0.4
+  path: ^1.8.3
   flutter_launcher_icons: ^0.14.1
 
 dev_dependencies:
