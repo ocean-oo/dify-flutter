@@ -27,6 +27,16 @@ class _ChatInputState extends State<ChatInput> {
   final List<UploadedFile> _uploadedFiles = [];
   bool _isUploading = false;
 
+  String _formatFileSize(int size) {
+    if (size < 1024) {
+      return '$size B';
+    } else if (size < 1024 * 1024) {
+      return '${(size / 1024).toStringAsFixed(2)} KB';
+    } else {
+      return '${(size / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -116,38 +126,96 @@ class _ChatInputState extends State<ChatInput> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (_uploadedFiles.isNotEmpty)
           Container(
-            height: 70,
+            constraints: const BoxConstraints(maxHeight: 120),
+            margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
+              reverse: true, // 从底部开始显示
               itemCount: _uploadedFiles.length,
               itemBuilder: (context, index) {
-                final file = _uploadedFiles[index];
+                final file =
+                    _uploadedFiles[_uploadedFiles.length - 1 - index]; // 反转索引
+                final fileName = file.name.length > 20
+                    ? '${file.name.substring(0, 17)}...'
+                    : file.name;
+                final fileSize = _formatFileSize(file.size);
+
                 return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
                   child: Container(
-                    padding: const EdgeInsets.all(8.0),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         if (file.mimeType.startsWith('image/'))
-                          Image.file(
-                            File(file.name),
-                            height: 40,
-                            width: 40,
-                            fit: BoxFit.cover,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.file(
+                              File(file.name),
+                              height: 24,
+                              width: 24,
+                              fit: BoxFit.cover,
+                            ),
                           )
                         else
-                          const Icon(Icons.insert_drive_file),
+                          Container(
+                            height: 24,
+                            width: 24,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              Icons.insert_drive_file,
+                              color: Theme.of(context).primaryColor,
+                              size: 16,
+                            ),
+                          ),
                         const SizedBox(width: 8),
-                        Text(file.name),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  fileName,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                fileSize,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         IconButton(
-                          icon: const Icon(Icons.close),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          icon: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                          ),
                           onPressed: () {
                             setState(() {
-                              _uploadedFiles.removeAt(index);
+                              _uploadedFiles
+                                  .removeAt(_uploadedFiles.length - 1 - index);
                             });
                           },
                         ),
@@ -159,7 +227,6 @@ class _ChatInputState extends State<ChatInput> {
             ),
           ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             boxShadow: [
@@ -172,13 +239,30 @@ class _ChatInputState extends State<ChatInput> {
           ),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.image),
-                onPressed: widget.enabled && !_isUploading ? _pickImage : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.attach_file),
-                onPressed: widget.enabled && !_isUploading ? _pickFile : null,
+              Container(
+                margin: const EdgeInsets.only(right: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap:
+                          widget.enabled && !_isUploading ? _pickImage : null,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(Icons.camera_alt_outlined),
+                      ),
+                    ),
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: widget.enabled && !_isUploading ? _pickFile : null,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(Icons.file_upload_outlined),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Expanded(
                 child: TextField(
