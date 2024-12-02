@@ -31,6 +31,8 @@ class ChatListItem extends StatelessWidget {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         trailing: Text(
           timestamp,

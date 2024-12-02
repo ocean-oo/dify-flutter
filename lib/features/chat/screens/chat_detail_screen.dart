@@ -42,7 +42,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _chatService.setConversationId(widget.conversationId);
     _conversationTitle = widget.title ?? 'New Conversation';
     if (widget.conversationId != null) {
-      _loadMessages();
+      _loadMessages().then((_) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+        }
+      });
     }
     // 监听流式消息
     _chatService.messageStreamController.stream.listen((message) {
@@ -92,10 +98,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       }
 
       _log.info('历史消息加载完成');
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
     } catch (e) {
       _log.severe('加载历史消息出错', e);
       setState(() {
@@ -347,5 +349,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }

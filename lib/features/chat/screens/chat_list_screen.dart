@@ -57,16 +57,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final difference = now.difference(timestamp);
 
     if (difference.inMinutes < 1) {
-      return 'just now';
+      return 'now';
     } else if (difference.inHours < 1) {
       final minutes = difference.inMinutes;
-      return '$minutes minutes ago';
+      return '${minutes}m';
     } else if (difference.inDays < 1) {
       final hours = difference.inHours;
-      return '$hours hours ago';
+      return '${hours}h';
     } else if (difference.inDays < 30) {
       final days = difference.inDays;
-      return '$days days ago';
+      return '${days}d';
     } else {
       return '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}';
     }
