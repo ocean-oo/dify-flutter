@@ -44,9 +44,10 @@ class _ChatInputState extends State<ChatInput> {
               controller: _textController,
               enabled: widget.enabled,
               decoration: const InputDecoration(
-                hintText: '输入消息...',
+                hintText: 'Type a message',
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,

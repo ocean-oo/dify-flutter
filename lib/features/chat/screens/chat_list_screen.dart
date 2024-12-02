@@ -57,16 +57,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final difference = now.difference(timestamp);
 
     if (difference.inMinutes < 1) {
-      return '刚刚';
+      return 'just now';
     } else if (difference.inHours < 1) {
       final minutes = difference.inMinutes;
-      return '$minutes分钟前';
+      return '$minutes minutes ago';
     } else if (difference.inDays < 1) {
       final hours = difference.inHours;
-      return '$hours小时前';
+      return '$hours hours ago';
     } else if (difference.inDays < 30) {
       final days = difference.inDays;
-      return '$days天前';
+      return '$days days ago';
     } else {
       return '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}';
     }
@@ -93,7 +93,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('聊天'),
+        title: const Text('CHAT'),
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
@@ -118,11 +118,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('加载失败: $_error'),
+            Text('load conversations failed: $_error'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadConversations,
-              child: const Text('重试'),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -137,7 +137,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 Center(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: Text('暂无对话，点击右下角按钮开始新对话'),
+                    child: Text('there is no conversation'),
                   ),
                 ),
               ],

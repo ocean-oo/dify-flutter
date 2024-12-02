@@ -120,7 +120,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
-    var resMessage;
+    ChatMessage? resMessage;
 
     setState(() {
       _messages.add(ChatMessage(
@@ -137,7 +137,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发送失败: $e')),
+          SnackBar(content: Text('Send message failed: $e')),
         );
       }
     } finally {
@@ -147,7 +147,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         });
       }
     }
-    if (widget.conversationId == null && resMessage.conversationId != null) {
+    if (widget.conversationId == null && resMessage!.conversationId != null) {
       _log.info('新会话创建，ID: ${resMessage.conversationId}');
       final name = await _chatService.renameConversation(
         resMessage.conversationId!,
@@ -186,7 +186,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 value: 'rename',
                 child: ListTile(
                   leading: Icon(Icons.edit),
-                  title: Text('重命名会话'),
+                  title: Text('Rename'),
                   contentPadding: EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
@@ -194,7 +194,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 value: 'delete',
                 child: ListTile(
                   leading: Icon(Icons.delete),
-                  title: Text('删除会话'),
+                  title: Text('Delete'),
                   contentPadding: EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
@@ -225,11 +225,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('加载失败: $_error'),
+            Text('Load failed: $_error'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadConversation,
-              child: const Text('重试'),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -258,11 +258,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('重命名会话'),
+          title: const Text('Rename Conversation'),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(
-              hintText: '请输入新的会话名称',
+              hintText: 'Please input new conversation name',
             ),
             autofocus: true,
           ),
@@ -271,7 +271,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
@@ -287,20 +287,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   if (!mounted) return;
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('重命名成功')),
+                    const SnackBar(content: Text('Rename successfully')),
                   );
                 } catch (e) {
                   if (!mounted) return;
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('重命名失败: $e'),
+                      content: Text('Rename failed: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               },
-              child: const Text('确定'),
+              child: const Text('Rename'),
             ),
           ],
         );
@@ -312,17 +312,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除会话'),
-        content: const Text('确定要删除这个会话吗？此操作不可恢复。'),
+        title: const Text('Delete Conversation'),
+        content: const Text(
+            'Are you sure you want to delete this conversation? This action is irreversible.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -334,13 +335,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('会话已删除')),
+          const SnackBar(content: Text('Conversation deleted')),
         );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('删除失败: $e'),
+            content: Text('Delete failed: $e'),
             backgroundColor: Colors.red,
           ),
         );

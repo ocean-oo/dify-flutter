@@ -51,7 +51,7 @@ class MessageBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    alt ?? '图片加载失败',
+                    alt ?? 'Image failed to load',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,
@@ -224,7 +224,7 @@ class MessageBubble extends StatelessWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('无法打开链接: $href'),
+                                      content: Text('Can\'t open link: $href'),
                                     ),
                                   );
                                 }
@@ -236,7 +236,7 @@ class MessageBubble extends StatelessWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('打开链接失败: $e'),
+                                    content: Text('Open link failed: $e'),
                                   ),
                                 );
                               }
