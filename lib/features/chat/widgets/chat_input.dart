@@ -123,6 +123,21 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  IconData _getFileIcon(String fileType) {
+    switch (fileType) {
+      case 'image':
+        return Icons.image;
+      case 'video':
+        return Icons.videocam;
+      case 'audio':
+        return Icons.audiotrack;
+      case 'document':
+        return Icons.description;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -140,7 +155,7 @@ class _ChatInputState extends State<ChatInput> {
                 final file =
                     _uploadedFiles[_uploadedFiles.length - 1 - index]; // 反转索引
                 final fileName = file.name.length > 20
-                    ? '${file.name.substring(0, 17)}...'
+                    ? '${file.name.substring(0, 27)}...'
                     : file.name;
                 final fileSize = _formatFileSize(file.size);
 
@@ -151,32 +166,20 @@ class _ChatInputState extends State<ChatInput> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                     child: Row(
                       children: [
-                        if (file.mimeType.startsWith('image/'))
-                          ClipRRect(
+                        Container(
+                          height: 24,
+                          width: 24,
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
-                            child: Image.file(
-                              File(file.name),
-                              height: 24,
-                              width: 24,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 24,
-                            width: 24,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Icon(
-                              Icons.insert_drive_file,
-                              color: Theme.of(context).primaryColor,
-                              size: 16,
-                            ),
                           ),
+                          child: Icon(
+                            _getFileIcon(file.getFileType()),
+                            color: Theme.of(context).primaryColor,
+                            size: 16,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Row(

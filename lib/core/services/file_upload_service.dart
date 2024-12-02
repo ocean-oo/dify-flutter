@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import 'dart:convert';
 import 'package:logging/logging.dart';
-// import 'package:mime/mime.dart';
 
 class UploadedFile {
   final String id;
@@ -13,6 +12,27 @@ class UploadedFile {
   final String mimeType;
   final String createdBy;
   final int createdAt;
+
+  static const _documentExtensions = {
+    'TXT',
+    'MD',
+    'MARKDOWN',
+    'PDF',
+    'HTML',
+    'XLSX',
+    'XLS',
+    'DOCX',
+    'CSV',
+    'EML',
+    'MSG',
+    'PPTX',
+    'PPT',
+    'XML',
+    'EPUB'
+  };
+  static const _imageExtensions = {'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'};
+  static const _audioExtensions = {'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'};
+  static const _videoExtensions = {'MP4', 'MOV', 'MPEG', 'MPGA'};
 
   UploadedFile({
     required this.size,
@@ -24,11 +44,20 @@ class UploadedFile {
     required this.name,
   });
 
+  String getFileType() {
+    final ext = extension.toUpperCase();
+    if (_documentExtensions.contains(ext)) return 'document';
+    if (_imageExtensions.contains(ext)) return 'image';
+    if (_audioExtensions.contains(ext)) return 'audio';
+    if (_videoExtensions.contains(ext)) return 'video';
+    return 'custom';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'transfer_method': 'local_file',
       'upload_file_id': id,
-      'type': 'image'
+      'type': getFileType()
     };
   }
 }
@@ -41,11 +70,6 @@ class FileUploadService {
     _log.info('开始上传文件: ${file.path}');
 
     try {
-      // final mimeType = lookupMimeType(file.path);
-      // if (mimeType == null) {
-      //   throw Exception('Unsupported file type');
-      // }
-
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('${ApiConfig.baseUrl}/files/upload'),
