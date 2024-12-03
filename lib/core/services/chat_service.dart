@@ -7,7 +7,7 @@ import '../config/api_config.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
 import '../../features/chat/models/stream_response.dart';
-import '../../../core/services/file_upload_service.dart';
+import '../../features/chat/models/uploaded_file.dart';
 
 class ChatMessage {
   final String content;
@@ -77,7 +77,7 @@ class ChatMessage {
       files: (json['files'] as List<dynamic>?)
           ?.map((f) => UploadedFile(
                 id: f['upload_file_id'],
-                mimeType: f['type'],
+                mimeType: f['mime_type'],
                 name: f['name'] ?? '',
                 size: f['size'] ?? 0,
                 extension: f['extension'] ?? '',

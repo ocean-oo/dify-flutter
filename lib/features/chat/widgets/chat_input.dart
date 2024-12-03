@@ -4,7 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/services/file_upload_service.dart';
 import 'package:logging/logging.dart';
-import 'package:open_file/open_file.dart';
+import '../models/uploaded_file.dart';
+import 'file_preview.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(String message, {List<UploadedFile>? files})
@@ -64,9 +65,11 @@ class _ChatInputState extends State<ChatInput> {
 
   Future<void> _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    for (final file in result!.files) {
-      if (file.path != null) {
-        await _uploadFile(File(file.path!));
+    if (result != null) {
+      for (final file in result.files) {
+        if (file.path != null) {
+          await _uploadFile(File(file.path!));
+        }
       }
     }
   }
@@ -130,118 +133,41 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
-  Future<void> _openFile(UploadedFile file) async {
-    if (file.file == null) return;
-
-    try {
-      await OpenFile.open(file.file!.path);
-    } catch (e) {
-      _log.severe('打开文件失败', e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Open File Failed: $e')),
-        );
-      }
-    }
-  }
-
   void _showFilePreview(BuildContext context, UploadedFile file) {
-    final fileType = file.getFileType();
-
-    // 对于不支持预览的文件类型，直接用系统应用打开
-    if (fileType != 'image' && fileType != 'document') {
-      _openFile(file);
-      return;
-    }
-
-    // 对于 PDF 文件，直接用系统应用打开
-    if (fileType == 'document' && file.extension.toLowerCase() == 'pdf') {
-      _openFile(file);
-      return;
-    }
-
     showDialog(
       context: context,
-      builder: (context) => Dialog.fullscreen(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                AppBar(
-                  leading: IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  title: Text(file.name),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.open_in_new),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _openFile(file);
-                      },
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: _buildPreviewContent(file),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => FilePreview(file: file, fullScreen: true),
     );
   }
 
-  Widget _buildPreviewContent(UploadedFile file) {
-    if (file.file == null) {
-      return const Center(
-        child: Text('Can not preview this file'),
-      );
-    }
-
-    final fileType = file.getFileType();
-    switch (fileType) {
-      case 'image':
-        return InteractiveViewer(
-          maxScale: 5.0,
-          child: Center(
-            child: Image.file(
-              file.file!,
-              fit: BoxFit.contain,
-            ),
+  Widget _buildFileList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: _uploadedFiles.length,
+      itemBuilder: (context, index) {
+        final file = _uploadedFiles[index];
+        return ListTile(
+          leading: Icon(_getFileIcon(file.getFileType())),
+          title: Text(
+            file.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+          subtitle: Text(_formatFileSize(file.size)),
+          trailing: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => _removeFile(index),
+          ),
+          onTap: () => _showFilePreview(context, file),
         );
-      case 'document':
-        return FutureBuilder<String>(
-          future: file.file!.readAsString(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('Can not get file content: ${snapshot.error}'),
-              );
-            }
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                snapshot.data ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-            );
-          },
-        );
-      default:
-        return const Center(
-          child: Text('Current file type not support preview'),
-        );
-    }
+      },
+    );
+  }
+
+  void _removeFile(int index) {
+    setState(() {
+      _uploadedFiles.removeAt(index);
+    });
   }
 
   @override
@@ -254,92 +180,7 @@ class _ChatInputState extends State<ChatInput> {
             constraints: const BoxConstraints(maxHeight: 120),
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ListView.builder(
-              reverse: true, // 从底部开始显示
-              itemCount: _uploadedFiles.length,
-              itemBuilder: (context, index) {
-                final file =
-                    _uploadedFiles[_uploadedFiles.length - 1 - index]; // 反转索引
-                final fileName = file.name.length > 20
-                    ? '${file.name.substring(0, 27)}...'
-                    : file.name;
-                final fileSize = _formatFileSize(file.size);
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 2),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                    child: InkWell(
-                      onTap: () => _showFilePreview(context, file),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 24,
-                            width: 24,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Icon(
-                              _getFileIcon(file.getFileType()),
-                              color: Theme.of(context).primaryColor,
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    fileName,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  fileSize,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.close,
-                              size: 14,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _uploadedFiles.removeAt(
-                                    _uploadedFiles.length - 1 - index);
-                              });
-                            },
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 24,
-                              minHeight: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: _buildFileList(),
           ),
         Container(
           decoration: BoxDecoration(

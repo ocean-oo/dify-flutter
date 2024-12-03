@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../../../core/services/chat_service.dart';
-import '../../../core/services/file_upload_service.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
+import '../models/uploaded_file.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String? conversationId;
