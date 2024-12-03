@@ -12,6 +12,7 @@ class UploadedFile {
   final String mimeType;
   final String createdBy;
   final int createdAt;
+  final File? file;
 
   static const _documentExtensions = {
     'TXT',
@@ -42,6 +43,7 @@ class UploadedFile {
     required this.createdAt,
     required this.id,
     required this.name,
+    this.file,
   });
 
   String getFileType() {
@@ -98,6 +100,7 @@ class FileUploadService {
           mimeType: data['mime_type'],
           createdBy: data['created_by'],
           createdAt: data['created_at'],
+          file: file, // 添加本地文件引用
         );
       } else {
         throw Exception('Failed to upload file: ${response.statusCode}');

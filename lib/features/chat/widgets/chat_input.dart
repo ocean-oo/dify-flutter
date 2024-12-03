@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/services/file_upload_service.dart';
 import 'package:logging/logging.dart';
+import 'package:open_file/open_file.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(String message, {List<UploadedFile>? files})
@@ -61,20 +62,11 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
-  Future<void> _pickFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles();
-
-      if (result != null) {
-        final file = File(result.files.single.path!);
-        await _uploadFile(file);
-      }
-    } catch (e) {
-      _log.severe('选择文件失败', e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick file: $e')),
-        );
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    for (final file in result!.files) {
+      if (file.path != null) {
+        await _uploadFile(File(file.path!));
       }
     }
   }
@@ -138,6 +130,120 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
+  Future<void> _openFile(UploadedFile file) async {
+    if (file.file == null) return;
+
+    try {
+      await OpenFile.open(file.file!.path);
+    } catch (e) {
+      _log.severe('打开文件失败', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Open File Failed: $e')),
+        );
+      }
+    }
+  }
+
+  void _showFilePreview(BuildContext context, UploadedFile file) {
+    final fileType = file.getFileType();
+
+    // 对于不支持预览的文件类型，直接用系统应用打开
+    if (fileType != 'image' && fileType != 'document') {
+      _openFile(file);
+      return;
+    }
+
+    // 对于 PDF 文件，直接用系统应用打开
+    if (fileType == 'document' && file.extension.toLowerCase() == 'pdf') {
+      _openFile(file);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: Text(file.name),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openFile(file);
+                      },
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: _buildPreviewContent(file),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewContent(UploadedFile file) {
+    if (file.file == null) {
+      return const Center(
+        child: Text('Can not preview this file'),
+      );
+    }
+
+    final fileType = file.getFileType();
+    switch (fileType) {
+      case 'image':
+        return InteractiveViewer(
+          maxScale: 5.0,
+          child: Center(
+            child: Image.file(
+              file.file!,
+              fit: BoxFit.contain,
+            ),
+          ),
+        );
+      case 'document':
+        return FutureBuilder<String>(
+          future: file.file!.readAsString(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text('Can not get file content: ${snapshot.error}'),
+              );
+            }
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                snapshot.data ?? '',
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            );
+          },
+        );
+      default:
+        return const Center(
+          child: Text('Current file type not support preview'),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -164,65 +270,71 @@ class _ChatInputState extends State<ChatInput> {
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          height: 24,
-                          width: 24,
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
+                    child: InkWell(
+                      onTap: () => _showFilePreview(context, file),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 24,
+                            width: 24,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              _getFileIcon(file.getFileType()),
+                              color: Theme.of(context).primaryColor,
+                              size: 16,
+                            ),
                           ),
-                          child: Icon(
-                            _getFileIcon(file.getFileType()),
-                            color: Theme.of(context).primaryColor,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  fileName,
-                                  style: const TextStyle(fontSize: 12),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    fileName,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                fileSize,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.color,
+                                const SizedBox(width: 8),
+                                Text(
+                                  fileSize,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 24,
-                            minHeight: 24,
+                          IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              size: 14,
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _uploadedFiles.removeAt(
+                                    _uploadedFiles.length - 1 - index);
+                              });
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 24,
+                              minHeight: 24,
+                            ),
                           ),
-                          icon: Icon(
-                            Icons.close,
-                            size: 14,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _uploadedFiles
-                                  .removeAt(_uploadedFiles.length - 1 - index);
-                            });
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -258,7 +370,8 @@ class _ChatInputState extends State<ChatInput> {
                     ),
                     InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: widget.enabled && !_isUploading ? _pickFile : null,
+                      onTap:
+                          widget.enabled && !_isUploading ? _pickFiles : null,
                       child: const Padding(
                         padding: EdgeInsets.all(8),
                         child: Icon(Icons.file_upload_outlined),

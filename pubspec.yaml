@@ -21,6 +21,7 @@ dependencies:
   mime: ^1.0.4
   path: ^1.8.3
   flutter_launcher_icons: ^0.14.1
+  open_file: ^3.5.10
 
 dev_dependencies:
   flutter_test:
