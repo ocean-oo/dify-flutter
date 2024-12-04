@@ -75,15 +75,7 @@ class ChatMessage {
       isStreaming: json['isStreaming'] ?? false,
       metadata: json['metadata'],
       files: (json['files'] as List<dynamic>?)
-          ?.map((f) => UploadedFile(
-                id: f['upload_file_id'],
-                mimeType: f['mime_type'],
-                name: f['name'] ?? '',
-                size: f['size'] ?? 0,
-                extension: f['extension'] ?? '',
-                createdAt: f['created_at'],
-                createdBy: f['created_by'],
-              ))
+          ?.map((f) => UploadedFile.fromJson(f))
           .toList(),
     );
   }
@@ -303,7 +295,7 @@ class ChatService {
       };
 
       if (files != null && files.isNotEmpty) {
-        body['files'] = files.map((f) => f.toJson()).toList();
+        body['files'] = files.map((f) => f.toRequest()).toList();
       }
 
       request.body = json.encode(body);

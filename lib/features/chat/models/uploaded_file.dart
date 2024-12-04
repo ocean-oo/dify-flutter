@@ -21,11 +21,23 @@ class UploadedFile {
     this.file,
   });
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toRequest() {
     return {
       'transfer_method': 'local_file',
       'upload_file_id': id,
       'type': getFileType()
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'size': size,
+      'extension': extension,
+      'mimeType': mimeType,
+      'createdBy': createdBy,
+      'createdAt': createdAt,
     };
   }
 
@@ -51,19 +63,42 @@ class UploadedFile {
   }
 
   static const _imageExtensions = {
-    'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg',
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'svg',
   };
 
   static const _documentExtensions = {
-    'txt', 'md', 'markdown', 'pdf', 'doc', 'docx',
-    'xls', 'xlsx', 'ppt', 'pptx', 'html', 'htm',
+    'txt',
+    'md',
+    'markdown',
+    'pdf',
+    'doc',
+    'docx',
+    'xls',
+    'xlsx',
+    'ppt',
+    'pptx',
+    'html',
+    'htm',
   };
 
   static const _audioExtensions = {
-    'mp3', 'wav', 'ogg', 'm4a', 'aac',
+    'mp3',
+    'wav',
+    'ogg',
+    'm4a',
+    'aac',
   };
 
   static const _videoExtensions = {
-    'mp4', 'mov', 'avi', 'mkv', 'wmv',
+    'mp4',
+    'mov',
+    'avi',
+    'mkv',
+    'wmv',
   };
 }

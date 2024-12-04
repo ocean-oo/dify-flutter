@@ -258,6 +258,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           isUser: message.isUser,
           timestamp: message.timestamp,
           isStreaming: message.isStreaming,
+          files: message.files,
         );
       },
     );

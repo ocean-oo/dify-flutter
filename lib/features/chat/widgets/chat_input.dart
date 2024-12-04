@@ -6,6 +6,7 @@ import '../../../core/services/file_upload_service.dart';
 import 'package:logging/logging.dart';
 import '../models/uploaded_file.dart';
 import 'file_preview.dart';
+import '../../../core/utils/file_utils.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(String message, {List<UploadedFile>? files})
@@ -28,16 +29,6 @@ class _ChatInputState extends State<ChatInput> {
   final FileUploadService _fileUploadService = FileUploadService();
   final List<UploadedFile> _uploadedFiles = [];
   bool _isUploading = false;
-
-  String _formatFileSize(int size) {
-    if (size < 1024) {
-      return '$size B';
-    } else if (size < 1024 * 1024) {
-      return '${(size / 1024).toStringAsFixed(2)} KB';
-    } else {
-      return '${(size / (1024 * 1024)).toStringAsFixed(2)} MB';
-    }
-  }
 
   @override
   void dispose() {
@@ -109,28 +100,13 @@ class _ChatInputState extends State<ChatInput> {
 
     widget.onSend(
       message,
-      files: _uploadedFiles.isNotEmpty ? _uploadedFiles : null,
+      files: _uploadedFiles.isNotEmpty ? [..._uploadedFiles] : null,
     );
 
     _textController.clear();
     setState(() {
       _uploadedFiles.clear();
     });
-  }
-
-  IconData _getFileIcon(String fileType) {
-    switch (fileType) {
-      case 'image':
-        return Icons.image;
-      case 'video':
-        return Icons.videocam;
-      case 'audio':
-        return Icons.audiotrack;
-      case 'document':
-        return Icons.description;
-      default:
-        return Icons.insert_drive_file;
-    }
   }
 
   void _showFilePreview(BuildContext context, UploadedFile file) {
@@ -142,21 +118,19 @@ class _ChatInputState extends State<ChatInput> {
 
   Widget _buildFileList() {
     return ListView.builder(
-      reverse: true, // 从底部开始显示
+      reverse: true,
       itemCount: _uploadedFiles.length,
       itemBuilder: (context, index) {
-        final file =
-        _uploadedFiles[_uploadedFiles.length - 1 - index]; // 反转索引
+        final file = _uploadedFiles[_uploadedFiles.length - 1 - index];
         final fileName = file.name.length > 20
             ? '${file.name.substring(0, 27)}...'
             : file.name;
-        final fileSize = _formatFileSize(file.size);
+        final fileSize = FileUtils.formatFileSize(file.size);
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 2),
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
             child: InkWell(
               onTap: () => _showFilePreview(context, file),
               borderRadius: BorderRadius.circular(4),
@@ -166,13 +140,11 @@ class _ChatInputState extends State<ChatInput> {
                     height: 24,
                     width: 24,
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .primaryColor
-                          .withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Icon(
-                      _getFileIcon(file.getFileType()),
+                      FileUtils.getFileIcon(file.getFileType()),
                       color: Theme.of(context).primaryColor,
                       size: 16,
                     ),
@@ -192,10 +164,7 @@ class _ChatInputState extends State<ChatInput> {
                           fileSize,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.color,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
                         ),
                       ],
@@ -205,13 +174,12 @@ class _ChatInputState extends State<ChatInput> {
                     icon: Icon(
                       Icons.close,
                       size: 14,
-                      color:
-                      Theme.of(context).textTheme.bodySmall?.color,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                     ),
                     onPressed: () {
                       setState(() {
-                        _uploadedFiles.removeAt(
-                            _uploadedFiles.length - 1 - index);
+                        _uploadedFiles
+                            .removeAt(_uploadedFiles.length - 1 - index);
                       });
                     },
                     padding: EdgeInsets.zero,

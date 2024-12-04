@@ -3,12 +3,16 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
+import '../../../core/utils/file_utils.dart';
+import '../models/uploaded_file.dart';
+import 'file_preview.dart';
 
 class MessageBubble extends StatelessWidget {
   final String message;
   final bool isUser;
   final DateTime timestamp;
   final bool isStreaming;
+  final List<UploadedFile>? files;
   static final _log = Logger('MessageBubble');
 
   const MessageBubble({
@@ -17,7 +21,51 @@ class MessageBubble extends StatelessWidget {
     required this.isUser,
     required this.timestamp,
     this.isStreaming = false,
+    this.files,
   });
+
+  Widget _buildFileList(BuildContext context) {
+    return Column(
+      children: files?.map((file) {
+            return ListTile(
+              dense: true,
+              leading: Icon(
+                FileUtils.getFileIcon(file.getFileType()),
+                size: 20,
+                color: Colors.white70,
+              ),
+              title: Text(
+                file.name,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                FileUtils.formatFileSize(file.size),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white70,
+                ),
+              ),
+              onTap: () {
+                if (file.file != null) {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext dialogContext) => FilePreview(
+                      file: file,
+                      fullScreen: true,
+                    ),
+                  );
+                }
+              },
+            );
+          }).toList() ??
+          [],
+    );
+  }
 
   Widget _buildImage(Uri uri, String? title, String? alt) {
     return ConstrainedBox(
@@ -142,6 +190,14 @@ class MessageBubble extends StatelessWidget {
                         ? CrossAxisAlignment.end
                         : CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: _buildFileList(context),
+                      ),
                       MarkdownBody(
                         data: message,
                         imageBuilder: _buildImage,
