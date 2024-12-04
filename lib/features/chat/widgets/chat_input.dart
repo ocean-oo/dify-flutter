@@ -142,32 +142,91 @@ class _ChatInputState extends State<ChatInput> {
 
   Widget _buildFileList() {
     return ListView.builder(
-      shrinkWrap: true,
+      reverse: true, // 从底部开始显示
       itemCount: _uploadedFiles.length,
       itemBuilder: (context, index) {
-        final file = _uploadedFiles[index];
-        return ListTile(
-          leading: Icon(_getFileIcon(file.getFileType())),
-          title: Text(
-            file.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        final file =
+        _uploadedFiles[_uploadedFiles.length - 1 - index]; // 反转索引
+        final fileName = file.name.length > 20
+            ? '${file.name.substring(0, 27)}...'
+            : file.name;
+        final fileSize = _formatFileSize(file.size);
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          child: Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+            child: InkWell(
+              onTap: () => _showFilePreview(context, file),
+              borderRadius: BorderRadius.circular(4),
+              child: Row(
+                children: [
+                  Container(
+                    height: 24,
+                    width: 24,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .primaryColor
+                          .withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(
+                      _getFileIcon(file.getFileType()),
+                      color: Theme.of(context).primaryColor,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            fileName,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          fileSize,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      size: 14,
+                      color:
+                      Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _uploadedFiles.removeAt(
+                            _uploadedFiles.length - 1 - index);
+                      });
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          subtitle: Text(_formatFileSize(file.size)),
-          trailing: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => _removeFile(index),
-          ),
-          onTap: () => _showFilePreview(context, file),
         );
       },
     );
-  }
-
-  void _removeFile(int index) {
-    setState(() {
-      _uploadedFiles.removeAt(index);
-    });
   }
 
   @override
