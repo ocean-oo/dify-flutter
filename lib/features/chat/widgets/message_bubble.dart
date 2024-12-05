@@ -34,21 +34,28 @@ class MessageBubble extends StatelessWidget {
                 size: 20,
                 color: Colors.white70,
               ),
-              title: Text(
-                file.name,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.white,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                FileUtils.formatFileSize(file.size),
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.white70,
-                ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      file.name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    FileUtils.formatFileSize(file.size),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
               onTap: () {
                 if (file.filePath != null) {
@@ -65,6 +72,7 @@ class MessageBubble extends StatelessWidget {
           [],
     );
   }
+
 
   Widget _buildImage(Uri uri, String? title, String? alt) {
     return ConstrainedBox(
