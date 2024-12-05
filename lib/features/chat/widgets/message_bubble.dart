@@ -56,7 +56,6 @@ class MessageBubble extends StatelessWidget {
                     context: context,
                     builder: (BuildContext dialogContext) => FilePreview(
                       file: file,
-                      fullScreen: true,
                     ),
                   );
                 }

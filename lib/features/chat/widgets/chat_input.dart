@@ -112,7 +112,7 @@ class _ChatInputState extends State<ChatInput> {
   void _showFilePreview(BuildContext context, UploadedFile file) {
     showDialog(
       context: context,
-      builder: (context) => FilePreview(file: file, fullScreen: true),
+      builder: (context) => FilePreview(file: file),
     );
   }
 

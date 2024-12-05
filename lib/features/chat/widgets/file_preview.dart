@@ -8,13 +8,11 @@ import 'package:logging/logging.dart';
 
 class FilePreview extends StatelessWidget {
   final UploadedFile file;
-  final bool fullScreen;
   static final _log = Logger('FilePreview');
 
   const FilePreview({
     super.key,
     required this.file,
-    this.fullScreen = false,
   });
 
   Future<void> _openFile() async {
@@ -83,10 +81,6 @@ class FilePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!fullScreen) {
-      return _buildPreviewContent();
-    }
-
     return Dialog.fullscreen(
       child: Scaffold(
         appBar: AppBar(
