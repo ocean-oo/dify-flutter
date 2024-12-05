@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:open_file/open_file.dart';
-import '../models/uploaded_file.dart';
 import 'package:logging/logging.dart';
+import '../models/uploaded_file.dart';
 
 class FilePreview extends StatelessWidget {
   final UploadedFile file;
@@ -43,12 +43,8 @@ class FilePreview extends StatelessWidget {
         );
       case 'document':
         if (file.extension.toLowerCase() == 'pdf') {
-          return Center(
-            child: TextButton(
-              onPressed: _openFile,
-              child: const Text('Open with System PDF Viewer'),
-            ),
-          );
+          _openFile();
+          return const Center(child: Text('Open with system app...'));
         }
         return FutureBuilder<String>(
           future: File(file.filePath!).readAsString(),
@@ -70,11 +66,9 @@ class FilePreview extends StatelessWidget {
           },
         );
       default:
-        return Center(
-          child: TextButton(
-            onPressed: _openFile,
-            child: const Text('Open with System App'),
-          ),
+        _openFile();
+        return const Center(
+          child: Text('Open with system app...'),
         );
     }
   }
