@@ -51,7 +51,7 @@ class MessageBubble extends StatelessWidget {
                 ),
               ),
               onTap: () {
-                if (file.file != null) {
+                if (file.filePath != null) {
                   showDialog(
                     context: context,
                     builder: (BuildContext dialogContext) => FilePreview(

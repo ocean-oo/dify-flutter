@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:open_file/open_file.dart';
@@ -16,10 +18,10 @@ class FilePreview extends StatelessWidget {
   });
 
   Future<void> _openFile() async {
-    if (file.file == null) return;
+    if (file.filePath == null) return;
 
     try {
-      await OpenFile.open(file.file!.path);
+      await OpenFile.open(file.filePath);
     } catch (e) {
       _log.severe('打开文件失败', e);
       rethrow;
@@ -27,7 +29,7 @@ class FilePreview extends StatelessWidget {
   }
 
   Widget _buildPreviewContent() {
-    if (file.file == null) {
+    if (file.filePath == null) {
       return const Center(
         child: Text('Can not preview this file'),
       );
@@ -37,7 +39,7 @@ class FilePreview extends StatelessWidget {
       case 'image':
         return InteractiveViewer(
           child: Image.file(
-            file.file!,
+            File(file.filePath!),
             fit: BoxFit.contain,
           ),
         );
@@ -51,7 +53,7 @@ class FilePreview extends StatelessWidget {
           );
         }
         return FutureBuilder<String>(
-          future: file.file!.readAsString(),
+          future: File(file.filePath!).readAsString(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

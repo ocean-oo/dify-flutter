@@ -41,7 +41,7 @@ class FileUploadService {
           mimeType: data['mime_type'],
           createdBy: data['created_by'],
           createdAt: data['created_at'],
-          file: file, // 添加本地文件引用
+          filePath: file.path,
         );
       } else {
         throw Exception('Failed to upload file: ${response.statusCode}');

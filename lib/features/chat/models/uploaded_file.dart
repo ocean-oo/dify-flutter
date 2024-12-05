@@ -1,5 +1,3 @@
-import 'dart:io';
-
 class UploadedFile {
   final String id;
   final String name;
@@ -8,7 +6,7 @@ class UploadedFile {
   final String mimeType;
   final String createdBy;
   final int createdAt;
-  final File? file;
+  final String? filePath;
 
   UploadedFile({
     required this.id,
@@ -18,7 +16,7 @@ class UploadedFile {
     required this.mimeType,
     required this.createdBy,
     required this.createdAt,
-    this.file,
+    this.filePath,
   });
 
   Map<String, dynamic> toRequest() {
@@ -38,6 +36,7 @@ class UploadedFile {
       'mimeType': mimeType,
       'createdBy': createdBy,
       'createdAt': createdAt,
+      'filePath': filePath,
     };
   }
 
@@ -50,6 +49,7 @@ class UploadedFile {
       mimeType: json['mimeType'] as String,
       createdBy: json['createdBy'] as String,
       createdAt: json['createdAt'] as int,
+      filePath: json['filePath'] as String,
     );
   }
 
