@@ -22,6 +22,8 @@ dependencies:
   path: ^1.8.3
   flutter_launcher_icons: ^0.14.1
   open_file: ^3.5.10
+  path_provider: ^2.1.1
+  flutter_image_compress: ^2.3.0
 
 dev_dependencies:
   flutter_test:

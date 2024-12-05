@@ -39,16 +39,25 @@ class _ChatInputState extends State<ChatInput> {
   Future<void> _pickImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+      final image = await picker.pickImage(source: ImageSource.camera);
 
       if (image != null) {
-        await _uploadFile(File(image.path));
+        final compressedFile = await FileUtils.compressImage(image);
+
+        if (compressedFile != null) {
+          _log.info('图片压缩前大小: ${await File(image.path).length()} bytes');
+          _log.info('图片压缩后大小: ${await compressedFile.length()} bytes');
+          await _uploadFile(File(compressedFile.path));
+        } else {
+          _log.warning('图片压缩失败，使用原图');
+          await _uploadFile(File(image.path));
+        }
       }
     } catch (e) {
-      _log.severe('选择图片失败', e);
+      _log.severe('选择或压缩图片失败', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
+          SnackBar(content: Text('Failed to process image: $e')),
         );
       }
     }
