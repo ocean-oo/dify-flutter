@@ -2,98 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import './cache_service.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
 import '../../features/chat/models/stream_response.dart';
-import '../../features/chat/models/uploaded_file.dart';
-
-class ChatMessage {
-  final String content;
-  final bool isUser;
-  final DateTime timestamp;
-  final String? messageId;
-  final String? conversationId;
-  final bool isStreaming;
-  final Map<String, dynamic>? metadata;
-  final List<UploadedFile>? files;
-
-  ChatMessage({
-    required this.content,
-    required this.isUser,
-    required this.timestamp,
-    this.messageId,
-    this.conversationId,
-    this.isStreaming = false,
-    this.metadata,
-    this.files,
-  });
-
-  ChatMessage copyWith({
-    String? content,
-    bool? isUser,
-    DateTime? timestamp,
-    String? messageId,
-    String? conversationId,
-    bool? isStreaming,
-    Map<String, dynamic>? metadata,
-    List<UploadedFile>? files,
-  }) {
-    return ChatMessage(
-      content: content ?? this.content,
-      isUser: isUser ?? this.isUser,
-      timestamp: timestamp ?? this.timestamp,
-      messageId: messageId ?? this.messageId,
-      conversationId: conversationId ?? this.conversationId,
-      isStreaming: isStreaming ?? this.isStreaming,
-      metadata: metadata ?? this.metadata,
-      files: files ?? this.files,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'content': content,
-      'isUser': isUser,
-      'timestamp': timestamp.millisecondsSinceEpoch,
-      'messageId': messageId,
-      'conversationId': conversationId,
-      'isStreaming': isStreaming,
-      'metadata': metadata,
-      'files': files?.map((f) => f.toJson()).toList(),
-    };
-  }
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json) {
-    return ChatMessage(
-      content: json['content'],
-      isUser: json['isUser'],
-      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
-      messageId: json['messageId'],
-      conversationId: json['conversationId'],
-      isStreaming: json['isStreaming'] ?? false,
-      metadata: json['metadata'],
-      files: (json['files'] as List<dynamic>?)
-          ?.map((f) => UploadedFile.fromJson(f))
-          .toList(),
-    );
-  }
-
-  factory ChatMessage.fromMessageHistory(MessageHistory history, bool isUser) {
-    return ChatMessage(
-      content: isUser ? history.query : history.answer,
-      isUser: isUser,
-      timestamp: history.createdAt,
-      messageId: history.id,
-      conversationId: history.conversationId,
-    );
-  }
-}
+import '../../features/chat/models/chart_message.dart';
 
 class ChatService {
   static final _log = Logger('ChatService');
   final _client = http.Client();
+  final _cache = CacheService();
   String? _currentConversationId;
   final StreamController<ChatMessage> messageStreamController =
       StreamController<ChatMessage>();
@@ -104,59 +23,12 @@ class ChatService {
     _currentConversationId = id;
   }
 
-  // 缓存消息
-  Future<void> _cacheMessages(
-      String conversationId, List<ChatMessage> messages) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_messages_$conversationId';
-    final messagesJson = messages.map((m) => m.toJson()).toList();
-    await prefs.setString(key, jsonEncode(messagesJson));
-    _log.info('已缓存会话 $conversationId 的 ${messages.length} 条消息');
-  }
-
-  // 获取缓存的消息
-  Future<List<ChatMessage>> _getCachedMessages(String conversationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_messages_$conversationId';
-    final messagesJson = prefs.getString(key);
-    if (messagesJson == null) {
-      _log.info('未找到会话 $conversationId 的缓存消息');
-      return [];
-    }
-
-    try {
-      final List<dynamic> decoded = jsonDecode(messagesJson);
-      final messages = decoded.map((m) => ChatMessage.fromJson(m)).toList();
-      _log.info('从缓存加载了 ${messages.length} 条消息');
-      return messages;
-    } catch (e) {
-      _log.severe('解析缓存消息失败: $e');
-      return [];
-    }
-  }
-
-  // 添加新消息到缓存
-  Future<void> _addMessageToCache(
-      String conversationId, ChatMessage message) async {
-    final cachedMessages = await _getCachedMessages(conversationId);
-    cachedMessages.add(message);
-    await _cacheMessages(conversationId, cachedMessages);
-  }
-
-  // 删除会话的缓存消息
-  Future<void> clearConversationCache(String conversationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_messages_$conversationId';
-    await prefs.remove(key);
-    _log.info('已清除会话 $conversationId 的缓存消息');
-  }
-
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
     _log.info('获取会话消息历史: $conversationId');
 
     try {
       // 先尝试从缓存获取消息
-      final cachedMessages = await _getCachedMessages(conversationId);
+      final cachedMessages = await _cache.getCachedMessages(conversationId);
       if (cachedMessages.isNotEmpty) {
         _log.info('使用缓存的消息');
         return cachedMessages;
@@ -200,7 +72,7 @@ class ChatService {
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
         // 缓存获取到的消息
-        await _cacheMessages(conversationId, messages);
+        await _cache.setCacheMessages(conversationId, messages);
 
         _log.info('处理后的消息数量: ${messages.length}');
         return messages;
@@ -256,23 +128,14 @@ class ChatService {
     }
   }
 
-  Future<ChatMessage> sendMessage(String message,
-      {List<UploadedFile>? files}) async {
-    _log.info('发送消息');
-    _log.info('消息内容: $message');
+  Future<ChatMessage> sendMessage(ChatMessage msg) async {
+    _log.info('消息内容: ${msg.content}');
     _log.info('当前会话ID: $_currentConversationId');
-    if (files != null && files.isNotEmpty) {
-      _log.info('附带文件数量: ${files.length}');
+    if (msg.files != null) {
+      _log.info('附带文件数量: ${msg.files!.length}');
     }
 
-    // 先新建用户消息
-    final userMessage = ChatMessage(
-      content: message,
-      isUser: true,
-      timestamp: DateTime.now(),
-      conversationId: _currentConversationId,
-      files: files,
-    );
+    // msg.conversationId = _currentConversationId;
 
     final request = http.Request(
       'POST',
@@ -288,14 +151,14 @@ class ChatService {
 
       final Map<String, dynamic> body = {
         'inputs': {},
-        'query': message,
+        'query': msg.content,
         'response_mode': 'streaming',
         'conversation_id': _currentConversationId ?? '',
         'user': ApiConfig.defaultUserId,
       };
 
-      if (files != null && files.isNotEmpty) {
-        body['files'] = files.map((f) => f.toRequest()).toList();
+      if (msg.files != null) {
+        body['files'] = msg.files!.map((f) => f.toRequest()).toList();
       }
 
       request.body = json.encode(body);
@@ -380,8 +243,8 @@ class ChatService {
 
       // 收到返回时，同时更新用户消息和最终消息
       if (currentConversationId != null) {
-        await _addMessageToCache(currentConversationId, userMessage);
-        await _addMessageToCache(currentConversationId, finalMessage);
+        await _cache.addOneMsgToCache(currentConversationId, msg);
+        await _cache.addOneMsgToCache(currentConversationId, finalMessage);
       }
 
       return finalMessage;
@@ -409,7 +272,7 @@ class ChatService {
 
       if (response.statusCode == 200) {
         // 同时删除缓存
-        await clearConversationCache(conversationId);
+        await _cache.clearCachedMessages(conversationId);
         _log.info('成功删除会话及其缓存');
       } else {
         _log.info(response.body);

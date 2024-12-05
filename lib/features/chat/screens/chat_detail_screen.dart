@@ -4,6 +4,7 @@ import '../../../core/services/chat_service.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/message_bubble.dart';
 import '../models/uploaded_file.dart';
+import '../models/chart_message.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String? conversationId;
@@ -131,20 +132,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     ChatMessage? resMessage;
+    ChatMessage sendMessage = ChatMessage(
+      content: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+      files: files,
+    );
 
     setState(() {
-      _messages.add(ChatMessage(
-        content: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-        files: files,
-      ));
+      _messages.add(sendMessage);
       _isLoading = true;
     });
     _scrollToBottom();
 
     try {
-      resMessage = await _chatService.sendMessage(text, files: files);
+      resMessage = await _chatService.sendMessage(sendMessage);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
