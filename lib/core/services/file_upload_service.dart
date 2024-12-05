@@ -1,8 +1,10 @@
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:logging/logging.dart';
+import '../config/api_config.dart';
 import '../../features/chat/models/uploaded_file.dart';
 
 class FileUploadService {
@@ -13,19 +15,27 @@ class FileUploadService {
     _log.info('开始上传文件: ${file.path}');
 
     try {
+      final settings = await ApiConfig.currentSettings;
+      final baseUrl = settings['baseUrl'];
+      final defaultUserId = settings['defaultUserId'];
+      final headers = await ApiConfig.headers;
+
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${ApiConfig.baseUrl}/files/upload'),
+        Uri.parse('$baseUrl/files/upload'),
       );
 
-      request.headers['Authorization'] = ApiConfig.headers['Authorization']!;
+      request.headers.addAll(headers);
+
+      final mimeType = lookupMimeType(file.path);
 
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         file.path,
+        contentType: mimeType != null ? MediaType.parse(mimeType) : null,
       ));
 
-      request.fields['user'] = ApiConfig.defaultUserId;
+      request.fields['user'] = defaultUserId!;
 
       final response = await _client.send(request);
       final responseBody = await response.stream.bytesToString();

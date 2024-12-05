@@ -26,6 +26,11 @@ class ChatService {
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
     _log.info('获取会话消息历史: $conversationId');
 
+    final settings = await ApiConfig.currentSettings;
+    final baseUrl = settings['baseUrl'];
+    final defaultUserId = settings['defaultUserId'];
+    final headers = await ApiConfig.headers;
+
     try {
       // 先尝试从缓存获取消息
       final cachedMessages = await _cache.getCachedMessages(conversationId);
@@ -36,18 +41,18 @@ class ChatService {
 
       // 如果缓存为空，则从服务器获取
       final queryParams = {
-        'user': ApiConfig.defaultUserId,
+        'user': defaultUserId,
         'conversation_id': conversationId,
       };
 
       _log.info('查询参数: $queryParams');
-      final uri = Uri.parse(ApiConfig.baseUrl + ApiConfig.messages)
+      final uri = Uri.parse('$baseUrl${ApiConfig.messages}')
           .replace(queryParameters: queryParams);
       _log.info('请求URL: $uri');
 
       final response = await _client.get(
         uri,
-        headers: ApiConfig.headers,
+        headers: headers,
       );
 
       _log.info('响应状态码: ${response.statusCode}');
@@ -92,20 +97,25 @@ class ChatService {
     _log.info('开始获取会话列表');
     _log.info('限制数量: $limit');
 
+    final settings = await ApiConfig.currentSettings;
+    final baseUrl = settings['baseUrl'];
+    final defaultUserId = settings['defaultUserId'];
+    final headers = await ApiConfig.headers;
+
     try {
       final queryParams = {
-        'user': ApiConfig.defaultUserId,
+        'user': defaultUserId,
         'limit': limit.toString(),
       };
 
       _log.info('查询参数: $queryParams');
-      final uri = Uri.parse('${ApiConfig.baseUrl}/conversations')
+      final uri = Uri.parse('$baseUrl${ApiConfig.conversations}')
           .replace(queryParameters: queryParams);
       _log.info('请求URL: $uri');
 
       final response = await _client.get(
         uri,
-        headers: ApiConfig.headers,
+        headers: headers,
       );
 
       _log.info('响应状态码: ${response.statusCode}');
@@ -135,26 +145,25 @@ class ChatService {
       _log.info('附带文件数量: ${msg.files!.length}');
     }
 
-    // msg.conversationId = _currentConversationId;
+    final settings = await ApiConfig.currentSettings;
+    final baseUrl = settings['baseUrl'];
+    final defaultUserId = settings['defaultUserId'];
+    final headers = await ApiConfig.headers;
 
     final request = http.Request(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/chat-messages'),
+      Uri.parse('$baseUrl${ApiConfig.chatMessages}'),
     );
 
     try {
-      request.headers.addAll({
-        ...ApiConfig.headers,
-        'Accept': 'text/event-stream',
-        'Content-Type': 'application/json',
-      });
+      request.headers.addAll(headers);
 
       final Map<String, dynamic> body = {
         'inputs': {},
         'query': msg.content,
         'response_mode': 'streaming',
         'conversation_id': _currentConversationId ?? '',
-        'user': ApiConfig.defaultUserId,
+        'user': defaultUserId,
       };
 
       if (msg.files != null) {
@@ -257,16 +266,16 @@ class ChatService {
 
   Future<void> deleteConversation(String conversationId) async {
     _log.info('删除会话: $conversationId');
-
+    final settings = await ApiConfig.currentSettings;
+    final baseUrl = settings['baseUrl'];
+    final defaultUserId = settings['defaultUserId'];
+    final headers = await ApiConfig.headers;
     try {
       final response = await _client.delete(
-        Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId'),
-        headers: {
-          ...ApiConfig.headers,
-          'Content-Type': 'application/json',
-        },
+        Uri.parse('$baseUrl${ApiConfig.conversations}/$conversationId'),
+        headers: headers,
         body: jsonEncode({
-          'user': ApiConfig.defaultUserId,
+          'user': defaultUserId,
         }),
       );
 
@@ -293,23 +302,24 @@ class ChatService {
     _log.info('新名称: ${name.isEmpty ? "(空)" : name}');
     _log.info('自动生成: $autoGenerate');
 
+    final settings = await ApiConfig.currentSettings;
+    final baseUrl = settings['baseUrl'];
+    final defaultUserId = settings['defaultUserId'];
+    final headers = await ApiConfig.headers;
+
     final requestBody = {
       'name': name.isEmpty ? '' : name,
-      'user': ApiConfig.defaultUserId,
+      'user': defaultUserId,
       'auto_generate': autoGenerate,
     };
     _log.info('请求体: $requestBody');
 
     final response = await _client.post(
-      Uri.parse('${ApiConfig.baseUrl}/conversations/$conversationId/name'),
-      headers: {
-        ...ApiConfig.headers,
-        'Content-Type': 'application/json',
-      },
+      Uri.parse('$baseUrl${ApiConfig.conversations}/$conversationId${ApiConfig.conversationRename}'),
+      headers: headers,
       body: jsonEncode(requestBody),
     );
 
-    _log.info('响应状态码: ${response.statusCode}');
     _log.fine('响应体: ${response.body}');
 
     if (response.statusCode != 200) {
