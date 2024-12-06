@@ -80,8 +80,8 @@ class ApiService {
             .replace(queryParameters: {...queryParams, 'user': defaultUserId});
       }
 
-      var request;
-      if (files != null){
+      var request; // ignore: prefer_typing_uninitialized_variables
+      if (files != null) {
         request = http.MultipartRequest(method, uri);
         request.files.add(files);
         request.fields['user'] = defaultUserId!;

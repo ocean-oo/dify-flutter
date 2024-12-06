@@ -267,76 +267,78 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _showRenameDialog(BuildContext context) async {
-    final TextEditingController controller = TextEditingController();
-    return showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Rename Conversation'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Please input new conversation name',
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final newName = controller.text.trim();
-                if (newName.isEmpty) return;
+    final controller = TextEditingController(text: _conversationTitle);
 
-                try {
-                  await _chatService.renameConversation(
-                      widget.conversationId!, newName);
-                  setState(() {
-                    _conversationTitle = newName;
-                  });
-                  if (!mounted) return;
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rename successfully')),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Rename failed: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Rename'),
-            ),
-          ],
-        );
-      },
+    // 在async操作前获取所有需要的context相关对象
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Conversation'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter new name',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isEmpty) return;
+              Navigator.of(context).pop();
+
+              try {
+                await _chatService.renameConversation(
+                    widget.conversationId!, newName);
+                if (!mounted) return;
+                setState(() {
+                  _conversationTitle = newName;
+                });
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('Rename successfully')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Rename failed: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _showDeleteConfirmDialog(BuildContext context) async {
+  Future<bool?> _showDeleteConfirmDialog(BuildContext context) async {
+    // 在async操作前获取所有需要的context相关对象
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Conversation'),
-        content: const Text(
-            'Are you sure you want to delete this conversation? This action is irreversible.'),
+        content:
+            const Text('Are you sure you want to delete this conversation?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete'),
           ),
         ],
@@ -346,14 +348,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (confirmed == true) {
       try {
         await _chatService.deleteConversation(widget.conversationId!);
-        if (!mounted) return;
-        Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return null;
+        navigator.pop(true);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('Conversation deleted')),
         );
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return null;
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Delete failed: $e'),
             backgroundColor: Colors.red,
@@ -361,6 +363,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     }
+    return confirmed;
   }
 
   @override
