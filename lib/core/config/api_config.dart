@@ -12,13 +12,11 @@ class ApiConfig {
   }
 
   // API endpoints
-  static const String login = '/auth/login';
-  static const String messages = '/messages';
-  static const String users = '/users';
   static const String chatMessages = '/chat-messages';
   static const String conversations = '/conversations';
   static const String conversationRename = '/name';
-  static const String messageHistory = '/message-history';
+  static const String messageHistory = '/messages';
+  static const String fileUpload = '/files/upload';
 
   // Headers
   static Future<Map<String, String>> get headers async {
