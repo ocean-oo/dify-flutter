@@ -1,12 +1,14 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
-import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:logging/logging.dart';
+import 'package:mime/mime.dart';
+
+import '../../features/chat/models/uploaded_file.dart';
 import '../config/api_config.dart';
 import './api_service.dart';
-import '../../features/chat/models/uploaded_file.dart';
 
 class FileUploadService {
   static final _log = Logger('FileUploadService');
@@ -21,8 +23,8 @@ class FileUploadService {
       contentType: mimeType != null ? MediaType.parse(mimeType) : null,
     );
 
-    final response = await _api.streamRequest(
-        'POST', ApiConfig.fileUpload, files: sendFile);
+    final response =
+        await _api.streamRequest('POST', ApiConfig.fileUpload, files: sendFile);
     final responseBody = await response.stream.bytesToString();
     final data = json.decode(responseBody);
     _log.info('上传响应: $data');

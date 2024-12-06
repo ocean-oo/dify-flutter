@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:open_file/open_file.dart';
 import 'package:logging/logging.dart';
+import 'package:open_file/open_file.dart';
+
 import '../models/uploaded_file.dart';
 
 class FilePreview extends StatelessWidget {

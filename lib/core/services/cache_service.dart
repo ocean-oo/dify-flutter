@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../features/chat/models/chart_message.dart';
 
 class CacheService {

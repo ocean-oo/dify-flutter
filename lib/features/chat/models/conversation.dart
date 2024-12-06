@@ -21,12 +21,12 @@ class Conversation {
       json['created_at'] * 1000,
       isUtc: true,
     ).toLocal();
-    
+
     final updatedTimestamp = DateTime.fromMillisecondsSinceEpoch(
       json['updated_at'] * 1000,
       isUtc: true,
     ).toLocal();
-    
+
     return Conversation(
       id: json['id'],
       name: json['name'],

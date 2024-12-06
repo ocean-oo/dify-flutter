@@ -1,10 +1,11 @@
 import 'package:chat_app/features/chat/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import '../widgets/chat_list_item.dart';
+
 import '../../../core/services/chat_service.dart';
-import '../models/conversation.dart';
 import '../../setting/screens/settings_screen.dart';
+import '../models/conversation.dart';
+import '../widgets/chat_list_item.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({Key? key}) : super(key: key);

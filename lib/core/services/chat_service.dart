@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import './api_service.dart';
+
 import 'package:logging/logging.dart';
-import '../config/api_config.dart';
-import './cache_service.dart';
+
+import '../../features/chat/models/chart_message.dart';
 import '../../features/chat/models/conversation.dart';
 import '../../features/chat/models/message_history.dart';
 import '../../features/chat/models/stream_response.dart';
-import '../../features/chat/models/chart_message.dart';
+import '../config/api_config.dart';
+import './api_service.dart';
+import './cache_service.dart';
 
 class ChatService {
   static final _log = Logger('ChatService');
@@ -181,8 +183,7 @@ class ChatService {
 
   Future<void> deleteConversation(String conversationId) async {
     _log.info('删除会话: $conversationId');
-    await _api.request(
-        'DELETE', '${ApiConfig.conversations}/$conversationId');
+    await _api.request('DELETE', '${ApiConfig.conversations}/$conversationId');
     await _cache.clearCachedMessages(conversationId);
     _log.info('成功删除会话及其缓存');
   }

@@ -1,5 +1,5 @@
-import './uploaded_file.dart';
 import './message_history.dart';
+import './uploaded_file.dart';
 
 class ChatMessage {
   final String content;

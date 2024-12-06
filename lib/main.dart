@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'features/chat/screens/chat_list_screen.dart';
+
 import 'features/chat/screens/chat_detail_screen.dart';
+import 'features/chat/screens/chat_list_screen.dart';
 
 void main() {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
-    debugPrint('${record.level.name}: ${record.loggerName}: ${record.time}: ${record.message}');
+    debugPrint(
+        '${record.level.name}: ${record.loggerName}: ${record.time}: ${record.message}');
   });
   runApp(const MyApp());
 }

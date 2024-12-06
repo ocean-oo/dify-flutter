@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 class FileUtils {
   static String formatFileSize(int size) {
@@ -46,6 +46,5 @@ class FileUtils {
     );
 
     return compressedFile;
-
   }
 }

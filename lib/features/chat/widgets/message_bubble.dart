@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/utils/file_utils.dart';
 import '../models/uploaded_file.dart';
 import 'file_preview.dart';
@@ -72,7 +73,6 @@ class MessageBubble extends StatelessWidget {
           [],
     );
   }
-
 
   Widget _buildImage(Uri uri, String? title, String? alt) {
     return ConstrainedBox(

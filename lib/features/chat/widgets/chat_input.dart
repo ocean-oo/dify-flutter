@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+
 import 'package:file_picker/file_picker.dart';
-import '../../../core/services/file_upload_service.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
+
+import '../../../core/services/file_upload_service.dart';
+import '../../../core/utils/file_utils.dart';
 import '../models/uploaded_file.dart';
 import 'file_preview.dart';
-import '../../../core/utils/file_utils.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(String message, {List<UploadedFile>? files})
