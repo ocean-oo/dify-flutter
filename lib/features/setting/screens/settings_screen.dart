@@ -14,6 +14,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _baseUrlController = TextEditingController();
   final _apiKeyController = TextEditingController();
   final _userIdController = TextEditingController();
+  String _originalApiKey = '';
+
 
   @override
   void initState() {
@@ -30,15 +32,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = await _settingsService.getSettings();
     setState(() {
       _baseUrlController.text = settings['baseUrl']!;
-      _apiKeyController.text = _maskApiKey(settings['apiKey']!);
+      _originalApiKey = settings['apiKey']!;
+      _apiKeyController.text = _maskApiKey(_originalApiKey);
       _userIdController.text = settings['defaultUserId']!;
     });
   }
 
   Future<void> _saveSettings() async {
+    final apiKey = _apiKeyController.text.contains('*')
+        ? _originalApiKey
+        : _apiKeyController.text;
+
     await _settingsService.saveSettings(
       baseUrl: _baseUrlController.text,
-      apiKey: _apiKeyController.text,
+      apiKey: apiKey,
       userId: _userIdController.text,
     );
     if (mounted) {
