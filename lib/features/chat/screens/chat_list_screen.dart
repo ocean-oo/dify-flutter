@@ -1,3 +1,4 @@
+import 'package:chat_app/core/services/settings_service.dart';
 import 'package:chat_app/features/chat/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -16,15 +17,30 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+  final SettingsService _settingsService = SettingsService();
   final _logger = Logger('ChatListScreen');
   List<Conversation> _conversations = [];
   bool _isLoading = false;
   String? _error;
+  String _appName = 'CHAT';
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _loadApiInfo();
+  }
+
+  Future<void> _loadApiInfo() async {
+    try {
+      final apiInfo = await _settingsService.getApiInfo();
+      setState(() {
+        _appName = apiInfo['name'] ?? 'CHAT';
+
+      });
+    } catch (e) {
+      _logger.warning('Failed to load API info: $e');
+    }
   }
 
   Future<void> _loadConversations() async {
@@ -95,7 +111,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CHAT'),
+        title: Text(_appName),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

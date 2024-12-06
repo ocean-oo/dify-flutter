@@ -44,6 +44,7 @@ class ApiConfig {
   static const String conversationRename = '/name';
   static const String messageHistory = '/messages';
   static const String fileUpload = '/files/upload';
+  static const String info = '/info';
 
   // Headers
   static Future<Map<String, String>> get headers async {
