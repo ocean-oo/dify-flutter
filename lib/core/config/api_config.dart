@@ -1,6 +1,8 @@
 import '../services/settings_service.dart';
 
 class ApiConfig {
+  // APP default config
+  static const String version = '1.0.0';
   static const String baseUrl = 'https://api.dify.ai/v1';
   static const String apiKey = 'app-Zlmq1rDUsq2AdFPxyAMyyQuq';
   static const String defaultUserId = 'app-user';

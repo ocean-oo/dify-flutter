@@ -1,3 +1,4 @@
+import 'package:chat_app/core/config/api_config.dart';
 import 'package:flutter/material.dart';
 import '../../../core/services/settings_service.dart';
 
@@ -20,12 +21,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
+  String _maskApiKey(String apiKey) {
+    if (apiKey.length <= 8) return apiKey;
+    return '${apiKey.substring(0, 4)}${'*' * (apiKey.length - 8)}${apiKey.substring(apiKey.length - 4)}';
+  }
+
   Future<void> _loadSettings() async {
     final settings = await _settingsService.getSettings();
     setState(() {
       _baseUrlController.text = settings['baseUrl']!;
-      _apiKeyController.text = settings['apiKey']!;
-      _userIdController.text = settings['userId']!;
+      _apiKeyController.text = _maskApiKey(settings['apiKey']!);
+      _userIdController.text = settings['defaultUserId']!;
     });
   }
 
@@ -79,6 +85,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _saveSettings,
               child: const Text('Save Settings'),
             ),
+            const Spacer(),
+            const Text(
+              'Version ${ApiConfig.version}',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
