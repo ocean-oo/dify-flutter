@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
+import 'core/config/api_config.dart';
 import 'features/chat/screens/chat_detail_screen.dart';
 import 'features/chat/screens/chat_list_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
     debugPrint(
         '${record.level.name}: ${record.loggerName}: ${record.time}: ${record.message}');
   });
+  await ApiConfig.initialize();
   runApp(const MyApp());
 }
 
@@ -19,7 +23,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Chat App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
