@@ -26,22 +26,21 @@ class ChatService {
   }
 
   Future<List<ChatMessage>> getMessageHistory(String conversationId) async {
-    _log.info('获取会话消息历史: $conversationId');
+    _log.info("====== get message history ======");
+    _log.info('conversation id : $conversationId');
     try {
-      // 先尝试从缓存获取消息
       final cachedMessages = await _cache.getCachedMessages(conversationId);
       if (cachedMessages.isNotEmpty) {
-        _log.info('使用缓存的消息');
+        _log.info('Using cached messages');
         return cachedMessages;
       }
-      // 如果缓存为空，则从服务器获取
       final queryParams = {
         'conversation_id': conversationId,
       };
       final response = await _api.request('GET', ApiConfig.messageHistory,
           queryParams: queryParams);
       final List<dynamic> messagesJson = response['data'];
-      _log.info('消息数量: ${messagesJson.length}');
+      _log.info('Number of messages: ${messagesJson.length}');
       final messages = messagesJson
           .map((json) => MessageHistory.fromJson(json))
           .expand((history) => [
@@ -49,37 +48,35 @@ class ChatService {
                 ChatMessage.fromMessageHistory(history, false),
               ])
           .toList();
-      // 按时间排序
       messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      // 缓存获取到的消息
       await _cache.setCacheMessages(conversationId, messages);
-      _log.info('处理后的消息数量: ${messages.length}');
+      _log.info('The number of messages processed: ${messages.length}');
 
       return messages;
     } catch (e, stack) {
-      _log.severe('获取消息历史出错: $e');
-      _log.fine('错误堆栈: $stack');
+      _log.severe('Error getting message history: $e');
+      _log.fine('stack: $stack');
       rethrow;
     }
   }
 
   Future<List<Conversation>> getConversations({int limit = 20}) async {
-    _log.info('开始获取会话列表, 限制数量: $limit');
+    _log.info('get list limit: $limit');
     final queryParams = {'limit': limit.toString()};
     final response = await _api.request('GET', ApiConfig.conversations,
         queryParams: queryParams);
     final List<dynamic> conversationsJson = response['data'];
-    _log.info('会话数量: ${conversationsJson.length}');
+    _log.info('length limit: ${conversationsJson.length}');
     return conversationsJson
         .map((json) => Conversation.fromJson(json))
         .toList();
   }
 
   Future<ChatMessage> sendMessage(ChatMessage msg) async {
-    _log.info('消息内容: ${msg.content}');
-    _log.info('当前会话ID: $_currentConversationId');
+    _log.info('content: ${msg.content}');
+    _log.info('conversation id: $_currentConversationId');
     if (msg.files != null) {
-      _log.info('附带文件数量: ${msg.files!.length}');
+      _log.info('length file: ${msg.files!.length}');
     }
 
     try {
@@ -103,7 +100,6 @@ class ChatService {
       int? createdAt;
       String pendingData = '';
 
-      // 创建初始消息
       final initialMessage = ChatMessage(
         content: '',
         isUser: false,
@@ -114,8 +110,8 @@ class ChatService {
 
       await for (final chunk in response.stream.transform(utf8.decoder)) {
         pendingData += chunk;
-
         while (true) {
+          _log.info(pendingData);
           final lineEnd = pendingData.indexOf('\n');
           if (lineEnd == -1) break;
 
@@ -136,7 +132,6 @@ class ChatService {
               createdAt = streamResponse.createdAt;
               _currentConversationId = currentConversationId;
 
-              // 发送更新的消息
               final updatedMessage = ChatMessage(
                 content: currentAnswer,
                 isUser: false,
@@ -150,12 +145,11 @@ class ChatService {
               messageStreamController.add(updatedMessage);
             }
           } catch (e) {
-            _log.severe('解析消息时出错: $e');
+            _log.severe('Error parsing message: $e');
           }
         }
       }
 
-      // 发送最终消息
       final finalMessage = ChatMessage(
         content: currentAnswer,
         isUser: false,
@@ -166,26 +160,23 @@ class ChatService {
         isStreaming: false,
       );
       messageStreamController.add(finalMessage);
-
-      // 收到返回时，同时更新用户消息和最终消息
       if (currentConversationId != null) {
         await _cache.addOneMsgToCache(currentConversationId, msg);
         await _cache.addOneMsgToCache(currentConversationId, finalMessage);
       }
-
       return finalMessage;
     } catch (e, stack) {
-      _log.severe('发送消息时出错: $e');
-      _log.fine('堆栈: $stack');
+      _log.severe('Error sending message: $e');
+      _log.fine('Stack: $stack');
       rethrow;
     }
   }
 
   Future<void> deleteConversation(String conversationId) async {
-    _log.info('删除会话: $conversationId');
+    _log.info('Deleting a Session: $conversationId');
     await _api.request('DELETE', '${ApiConfig.conversations}/$conversationId');
     await _cache.clearCachedMessages(conversationId);
-    _log.info('成功删除会话及其缓存');
+    _log.info('The session and its cache were deleted successfully');
   }
 
   Future<String> renameConversation(String conversationId, String name,

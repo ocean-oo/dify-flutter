@@ -55,14 +55,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
     // 监听流式消息
     _chatService.messageStreamController.stream.listen((message) {
+      _log.info('listening message of chat service', message.content);
       if (mounted) {
         setState(() {
-          // 如果是机器人的消息（非用户消息），总是替换最后一条消息
           if (!message.isUser &&
               _messages.isNotEmpty &&
               !_messages.last.isUser) {
             _messages[_messages.length - 1] = message;
           } else {
+            _log.info('message: $message');
             _messages.add(message);
           }
         });
@@ -81,7 +82,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadMessages() async {
-    _log.info('开始加载历史消息，当前会话ID: ${_chatService.currentConversationId}');
+    _log.info(
+      'loading message of conversation ID: ${_chatService.currentConversationId}',
+    );
 
     setState(() {
       _isLoading = true;

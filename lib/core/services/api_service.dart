@@ -112,10 +112,8 @@ class ApiService {
   }
 
   dynamic _handleResponse(http.Response response) {
-    _log.info('响应状态码: ${response.statusCode}');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = json.decode(response.body);
-      _log.info('响应数据: $data');
       return data;
     } else {
       throw Exception('HTTP Error: ${response.body}');

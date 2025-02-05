@@ -7,9 +7,9 @@ import '../services/settings_service.dart';
 class ApiConfig {
   // APP default config
   static const String version = '0.0.1';
-  static const String baseUrl = 'https://api.dify.ai/v1';
-  static const String apiKey = 'app-Zlmq1rDUsq2AdFPxyAMyyQuq';
-  static String _defaultUserId = 'app-user';
+  static const String baseUrl = 'https://kingai.tnicorporation.com/v1';
+  static const String apiKey = 'app-gNNsRpXyn8F1iLcmAcCYhDVw';
+  static String _defaultUserId = 'dify-flutter';
   static String get defaultUserId => _defaultUserId;
 
   static final _settingsService = SettingsService();
